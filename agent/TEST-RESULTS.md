@@ -1,0 +1,18 @@
+# Verification — 2026-10-28
+
+- Ten unit tests passed: file read/list/search; denied and approved writes; backup preservation; per-request mock web approval; path escapes/device names; rejected reparse points; rejected unknown tools/arguments; size/binary limits; intervening changes during approval; malformed model calls; explicitly approved absolute paths. Several checks share a test case.
+- Actual llama.cpp b11669 + Qwen3-4B-Q4_K_M integration passed against temporary synthetic files:
+  - Model called `read_file` and accurately returned `APRICOT-527` from the fixture.
+  - Model called `write_file`; test approval callback denied it; original contents remained intact.
+  - Model called mock `web_search`; test approval callback denied it; no real web request occurred.
+- Controller socket guard recorded only `127.0.0.1:18081`. The model used its existing downloaded file, `--offline`, and CPU settings. No packages or models were downloaded.
+- The initial sandboxed integration attempt loaded the model but could not reach the local endpoint. The approved rerun outside that sandbox passed. The test stopped only its own model process.
+- Physical network disconnection and an OS firewall egress block were not tested or configured. This result does not claim whole-system network isolation.
+- The model's wording after a denied mock request included an inaccurate suggestion that a simulation was in progress. The broker was not called; deterministic controller status lines report tool outcomes separately from generated prose.
+- Follow-up: real web broker implemented, but no live search has been sent. Seven additional broker tests verify denial before DNS, per-request approval, exact request construction, parsing, no redirects/retries, limits and no script execution using fake responses only.
+- Nine additional document tests passed, including PDF text and image metadata using libraries already bundled with Codex. No software was installed. Total: 26 passing unit tests.
+- No GitHub push occurred. The public repository name remains undecided.
+- Updated real-model integration passed all four checks: text read, denied write, DOCX read returning `PLUM-819`, and denial of the real web broker before network access. Controller socket recording again contained only localhost:18081.
+- Live web verification: after explicit approval, exactly one POST to `https://html.duckduckgo.com/html/` with body `q=Python+official+documentation` succeeded and returned five parsed results. One approval callback was invoked. No redirects, retries, cookies, attachments or result-page visits occurred. This one-time approval is consumed; future requests require fresh approval.
+- Private-skill update: 32 unit tests passed. A separate private harness verified an actual authorized local skill by matching the loaded content hash, then observed the local model correctly demonstrate the selected app preferences. No private content was printed or included in this public test record. The same session's web request was blocked before network access. Only localhost:18081 was recorded. This verifies selected behavior, not universal compliance with every skill.
+- Frankesso source preparation: 33 unit tests passed, including rejection of inherited llama.cpp tool/MCP environment settings. Machine-specific configuration is stored outside the repository, and private path aliases are normalized before session isolation checks.
