@@ -2,7 +2,7 @@
 
 An offline-first Windows assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
 
-See [setup, capabilities and limits](agent/README.md), [test evidence](agent/TEST-RESULTS.md), and the [approved live-search test](agent/WEB-TEST-REQUEST.md).
+See [test evidence](agent/TEST-RESULTS.md) and the [approved live-search test](agent/WEB-TEST-REQUEST.md).
 
 ## Start locally
 
@@ -17,3 +17,9 @@ Python on PATH supports core functions. The launcher prefers an existing Codex b
 Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool. A 4B model can make mistakes, and some document formats are unsupported. See the detailed guide for limits and verified behavior.
 
 This repository excludes model/runner binaries, machine-specific access configuration, private skills, user files, credentials, and chat logs. It does not vendor third-party skill repositories. Model and runtime licenses remain with their respective distributions.
+
+## License
+
+Frankesso's original source code and documentation are available under the [MIT License](LICENSE). You may use, modify, and redistribute them, including commercially, provided the copyright and license notices are retained. The software is provided without warranty.
+
+Separately installed models, runtimes, libraries, private skills, and user data are not covered by this grant. See [third-party components](THIRD_PARTY_NOTICES.md) for upstream license references.
