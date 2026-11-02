@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/frankesso-logo.svg" alt="Frankesso AI coffee bunny logo" width="180">
+</p>
+
 # Frankesso
 
 An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
@@ -97,3 +101,6 @@ This is the public source repository. Keep machine-specific `access.json`, local
 Frankesso's original source code and documentation are available under the [MIT License](LICENSE). You may use, modify, and redistribute them, including commercially, provided the copyright and license notices are retained. The software is provided without warranty.
 
 Separately installed models, runtimes, libraries, private skills, and user data are not covered by this grant. See [third-party components](THIRD_PARTY_NOTICES.md) for upstream license references.
+<p align="center">
+  <img src="assets/frankesso-favicon.svg" alt="Frankesso AI bunny favicon" width="64">
+</p>
