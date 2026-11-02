@@ -1,15 +1,10 @@
-<table>
-  <tr>
-    <td valign="middle">
-      <h1>Frankesso</h1>
-      <p>An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.</p>
-      <p>Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.</p>
-    </td>
-    <td valign="middle" align="right" width="200">
-      <img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" width="180">
-    </td>
-  </tr>
-</table>
+<img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
+
+# Frankesso
+
+An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
+
+Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
 ## Start locally
 
@@ -101,14 +96,8 @@ This is the public source repository. Keep machine-specific `access.json`, local
 
 ## License
 
-<table>
-  <tr>
-    <td valign="middle" width="80">
-      <img src="assets/frankesso-favicon.png" alt="Frankesso AI bunny favicon" width="64">
-    </td>
-    <td valign="middle">
-      <p>Frankesso's original source code and documentation are available under the <a href="LICENSE">MIT License</a>. You may use, modify, and redistribute them, including commercially, provided the copyright and license notices are retained. The software is provided without warranty.</p>
-      <p>Separately installed models, runtimes, libraries, private skills, and user data are not covered by this grant. See <a href="THIRD_PARTY_NOTICES.md">third-party components</a> for upstream license references.</p>
-    </td>
-  </tr>
-</table>
+<img src="assets/frankesso-favicon.png" alt="Frankesso AI bunny favicon" align="left" width="64">
+
+Frankesso's original source code and documentation are available under the [MIT License](LICENSE). You may use, modify, and redistribute them, including commercially, provided the copyright and license notices are retained. The software is provided without warranty.
+
+Separately installed models, runtimes, libraries, private skills, and user data are not covered by this grant. See [third-party components](THIRD_PARTY_NOTICES.md) for upstream license references.
