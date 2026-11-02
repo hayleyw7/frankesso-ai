@@ -1,6 +1,5 @@
-<img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
-
 # Frankesso
+<img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
 
 An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
 
