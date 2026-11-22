@@ -1,0 +1,9 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/ink</item>
+        <item name="android:colorControlActivated">@color/ink</item>
+        <item name="android:colorControlNormal">@color/ink_muted</item>
+        <item name="android:windowBackground">@color/cream</item>
+    </style>
+</resources>

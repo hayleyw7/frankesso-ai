@@ -1,0 +1,11 @@
+<resources>
+    <!-- Base RGB values come directly from the original bunny artwork. -->
+    <color name="cream">#FAF2E4</color>
+    <color name="ink">#0A0909</color>
+    <color name="cream_disabled_outline">#4DFAF2E4</color>
+    <color name="ink_disabled_outline">#4D0A0909</color>
+    <color name="cream_muted">#B3FAF2E4</color>
+    <color name="ink_muted">#B30A0909</color>
+    <color name="cream_feedback">#33FAF2E4</color>
+    <color name="ink_feedback">#240A0909</color>
+</resources>
