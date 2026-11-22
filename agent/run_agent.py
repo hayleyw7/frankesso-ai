@@ -18,9 +18,10 @@ def server_environment(source=None):
 
 
 class LocalServer:
-    def __init__(self, project):
+    def __init__(self, project, stop=None):
         self.project = Path(project)
         self.process = None
+        self.stop = stop
 
     def __enter__(self):
         with socket.socket() as check:
@@ -39,6 +40,8 @@ class LocalServer:
             self.process = subprocess.Popen(args, cwd=self.project, stdout=self.log, stderr=self.log, env=server_environment(),
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             for _ in range(120):
+                if self.stop is not None and self.stop.is_set():
+                    raise RuntimeError("Startup canceled.")
                 if self.process.poll() is not None:
                     raise RuntimeError("Agent server exited; existing chat configuration was not changed.")
                 connection = http.client.HTTPConnection("127.0.0.1", agent.PORT, timeout=2)
@@ -52,11 +55,25 @@ class LocalServer:
                     pass
                 finally:
                     connection.close()
-                time.sleep(1)
+                if self.stop is not None:
+                    self.stop.wait(1)
+                else:
+                    time.sleep(1)
             raise RuntimeError("Agent server did not become ready within two minutes")
         except BaseException:
             self.__exit__(None, None, None)
             raise
+
+    def cancel(self):
+        """Interrupt only this instance; the owning thread reaps the process."""
+        if self.stop is not None:
+            self.stop.set()
+        process = self.process
+        if process is not None and process.poll() is None:
+            try:
+                process.terminate()
+            except ProcessLookupError:
+                pass
 
     def __exit__(self, *_):
         if self.process and self.process.poll() is None:
@@ -70,13 +87,23 @@ class LocalServer:
         self.logs.cleanup()
 
 
+def read_config():
+    config_path = Path(__file__).parent / "access.json"
+    if not config_path.exists():
+        config_path = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Frankesso" / "access.json"
+    return json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {
+        "approved_local_roots": [], "web_mode": "ask_each_request",
+    }
+
+
+def runtime_root(config):
+    return Path(config.get("runtime_root") or Path(__file__).resolve().parent.parent)
+
+
 if __name__ == "__main__":
     try:
-        config_path = Path(__file__).parent / "access.json"
-        if not config_path.exists():
-            config_path = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Frankesso" / "access.json"
-        config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {"approved_local_roots": [], "web_mode": "ask_each_request"}
-        project = config.get("runtime_root") or Path(__file__).resolve().parent.parent
+        config = read_config()
+        project = runtime_root(config)
         with LocalServer(project):
             agent.main(approved_roots=config["approved_local_roots"], web_mode=config.get("web_mode", "mock"), private_skills_root=config.get("private_skills_root"))
     except (OSError, RuntimeError) as error:

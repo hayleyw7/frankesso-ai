@@ -1,7 +1,7 @@
 # Frankesso
 <img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
 
-An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
+An offline-first Windows assistant with a command-line interface and a text-only desktop chat window for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
 
 Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
@@ -22,6 +22,14 @@ Existing installations can keep their private configuration and use the same `St
 The launcher prefers an existing Codex bundled Python and falls back to `python` on PATH. Core tools use Python's standard library; PDF text extraction requires `pypdf`, and image metadata requires Pillow, in the selected interpreter. No dependency installation runs automatically.
 
 The launcher starts a separate CPU-only llama.cpp server on `127.0.0.1:18081` and opens the interactive controller in the current console. It refuses to take over an occupied port and stops only its own server on exit. An existing ordinary chat launcher and port 18080 are unchanged. See the [test evidence](agent/TEST-RESULTS.md) for the runtime version previously verified.
+
+## Windows desktop chat
+
+After setting up the same local Python and model runtime above, run `Install Frankesso Desktop.cmd` once. It adds a **Frankesso** shortcut with the coffee bunny icon to your own Windows Start menu, without admin access. Search for Frankesso in Start to open the window. The selected Python must include Tkinter and `pythonw.exe`; nothing is downloaded or installed by the shortcut setup.
+
+The desktop window is text-only and offline: it never loads file tools, private skills, or web search. Conversation context is kept in memory while the window is open, and **New chat** clears it. Use **Enter** to send, **Shift+Enter** for a line break, and `Start Frankesso.cmd` for the full terminal workflow with approvals. Close one before opening the other; both use the same isolated local model port.
+
+Keep this repository at its current location, or rerun the installer after moving it. To remove just the shortcut, run `"Install Frankesso Desktop.cmd" --remove` in Command Prompt from the repository folder, or remove Frankesso's shortcut from `shell:programs` in File Explorer.
 
 ## File access and approvals
 
@@ -79,10 +87,12 @@ Run these commands on Windows, from the repository root:
 
 ```cmd
 cd agent
-python -B -m unittest -v test_agent test_web_search test_documents test_private_skills
+python -B -m unittest -v test_agent test_web_search test_documents test_private_skills test_desktop
 ```
 
 The suite exercises permissions, real-broker denial without networking, fake HTTP responses, bounded parsers, private-skill isolation, and synthetic fixtures. Use the existing bundled Python, or another interpreter with `pypdf` and Pillow, to include PDF and image tests; those tests skip when the libraries are unavailable. The absolute-path permission test targets Windows path semantics, not POSIX paths.
+
+For a desktop smoke test on Windows, run `-m tkinter` with the exact `python.exe` selected by the desktop installer (the bundled copy if it has Tkinter, otherwise the one on PATH). Confirm its demo opens. Then run the installer and search for **Frankesso** in Start. Check the bunny icon, send two messages with networking off, start a new chat, and close the window. Try opening the desktop while the CLI has port 18081 to confirm the desktop declines and leaves the CLI running. Reopen after closing the CLI.
 
 From the same `agent` directory, run the actual-model integration test with the path to your existing runtime folder:
 
