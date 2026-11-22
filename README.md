@@ -12,7 +12,7 @@ Frankesso supports bounded local text search, text edits with previews and backu
 
 ## Windows desktop app
 
-Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, run `Frankesso-2.0.0-Windows-x64-Setup.exe` and open **Frankesso** from Start. Setup is for the current Windows user and bundles Python, Tk, and the CPU model runner. No admin access, Git, separate Python, or terminal setup is required. Native ARM64 and 32-bit Windows are not supported by this installer.
+Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, run `Frankesso-2.0.0-Windows-x64-Setup.exe` and open **Frankesso** from Start. Setup is for the current Windows user and bundles Python, Tk, and the CPU model runner. No admin access, Git, separate Python, or terminal setup is required. The installer requires an AVX2-capable x64 processor. Native ARM64 and 32-bit Windows are not supported.
 
 The first time you open it, choose **Download model** to get Qwen3-4B (2.5 GB) from Hugging Face. It shows progress, supports cancel and retry, and checks the exact download before using it. Afterward, the chat runs offline. The desktop app is text-only and does not load web, private-skill, or file-editing tools. Those remain available through the separate CLI, with its existing approvals. Uninstall from Windows **Installed apps** to remove the desktop app, Start shortcut, and its model download; your source checkout or separate CLI files are unaffected.
 

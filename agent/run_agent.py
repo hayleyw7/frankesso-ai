@@ -18,12 +18,13 @@ def server_environment(source=None):
 
 
 class LocalServer:
-    def __init__(self, project, stop=None, model_path=None, startup_timeout=120, skip_warmup=False):
+    def __init__(self, project, stop=None, model_path=None, startup_timeout=120, skip_warmup=False, threads=6):
         self.project = Path(project)
         self.process = None
         self.stop = stop
         self.startup_timeout = startup_timeout
         self.skip_warmup = skip_warmup
+        self.threads = threads
         self.startup_log = ""
         self.model_path = model_path or self.project / "models" / "Qwen3-4B-Q4_K_M.gguf"
 
@@ -40,7 +41,7 @@ class LocalServer:
                 "--cors-origins", "localhost",
                 "--offline", "--no-agent", "--no-ui-mcp-proxy", "--no-ui",
                 "-c", "4096", "-np", "1", "--device", "none", "-ngl", "0",
-                "--no-op-offload", "-t", "6", "--jinja", "--reasoning", "off"]
+                "--no-op-offload", "-t", str(self.threads), "--jinja", "--reasoning", "off"]
         if self.skip_warmup:
             args.append("--no-warmup")
         try:
@@ -76,6 +77,11 @@ class LocalServer:
             self._cleanup(capture_startup=True)
             raise
 
+    def log_tail(self, limit=8192):
+        with self.log_path.open("rb") as log:
+            log.seek(max(0, self.log_path.stat().st_size - limit))
+            return log.read(limit).decode("utf-8", errors="replace")
+
     def cancel(self):
         """Interrupt only this instance; the owning thread reaps the process."""
         if self.stop is not None:
@@ -103,9 +109,7 @@ class LocalServer:
             # Failure is before accepting user prompts. Keep only a small tail
             # for package smoke tests, outside the ordinary chat transcript.
             try:
-                with self.log_path.open("rb") as log:
-                    log.seek(max(0, self.log_path.stat().st_size - 8192))
-                    self.startup_log = log.read(8192).decode("utf-8", errors="replace")
+                self.startup_log = self.log_tail()
             except OSError:
                 pass
         self.logs.cleanup()

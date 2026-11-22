@@ -20,7 +20,7 @@ class DesktopTests(unittest.TestCase):
         chat.ask("How should I label them?")
         messages = local_model.call_args.args[0]
         self.assertEqual(messages[-3]["content"], "What should I use for basil?")
-        self.assertEqual(local_model.call_args.kwargs, {"tools_enabled": False})
+        self.assertEqual(local_model.call_args.kwargs, {"tools_enabled": False, "max_tokens": desktop.MAX_REPLY_TOKENS})
         local_model.return_value = {"tool_calls": [{"name": "web_search"}]}
         self.assertIn("No action taken", chat.ask("Look up herb prices."))
         self.assertEqual(len(chat.history), 2)
@@ -44,6 +44,7 @@ class DesktopTests(unittest.TestCase):
             desktop.Chat().ask("Plan a window planter.")
             connect.assert_called_once_with("127.0.0.1", agent.PORT, timeout=180)
             payload = json.loads(connect.return_value.request.call_args.args[2])
+            self.assertEqual(payload.get("max_tokens"), desktop.MAX_REPLY_TOKENS)
             self.assertNotIn("tools", payload)
             self.assertNotIn("tool_choice", payload)
 

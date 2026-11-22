@@ -62,12 +62,12 @@ def approve(action, details):
     return input("Type APPROVE ONCE to allow this exact action, or Enter to deny: ") == "APPROVE ONCE"
 
 
-def model_request(messages, *, tools_enabled=True):
+def model_request(messages, *, tools_enabled=True, max_tokens=600):
     # Fixed numeric loopback address, no redirects, proxy variables, DNS, or remote URL input.
     conn = http.client.HTTPConnection("127.0.0.1", PORT, timeout=180)
     try:
         payload = {"model": "local-qwen", "messages": messages, "temperature": 0,
-                   "max_tokens": 600, "stream": False}
+                   "max_tokens": max_tokens, "stream": False}
         if tools_enabled:
             payload.update(tools=TOOLS, tool_choice="auto")
         body = json.dumps(payload)

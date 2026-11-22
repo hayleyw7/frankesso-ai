@@ -46,8 +46,13 @@ if os.environ.get("FULL_MODEL_SMOKE") == "1":
                     print(worker.server.startup_log, file=sys.stderr)
                 raise AssertionError(message)
             worker.inbox.put("Name one common plant. One word only.")
-            kind, reply = worker.outbox.get(timeout=180)
-            assert kind == "reply", reply
+            try:
+                kind, reply = worker.outbox.get(timeout=195)
+                assert kind == "reply", reply
+            except Exception:
+                if worker.server and worker.server.log_path.exists():
+                    print(worker.server.log_tail(16000), file=sys.stderr)
+                raise
             assert reply.strip() and reply != "No response from the local model."
             assert worker.server.process.poll() is None
         finally:

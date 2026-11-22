@@ -13,6 +13,7 @@ from run_agent import LocalServer, read_config, runtime_root
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 MAX_PROMPT = 1800
 MAX_CONTEXT = 1800
+MAX_REPLY_TOKENS = 224
 SYSTEM = (
     "You are Frankesso, an offline desktop chat assistant. Keep answers concise. "
     "No files, tools, or internet are available. Never claim to have performed an action. /no_think"
@@ -38,7 +39,7 @@ class Chat:
             remaining -= size
         user = {"role": "user", "content": prompt}
         response = self.request([{"role": "system", "content": SYSTEM}, *recent, user],
-                                tools_enabled=False)
+                                tools_enabled=False, max_tokens=MAX_REPLY_TOKENS)
         if response.get("tool_calls"):
             return "No action taken. Desktop chat does not use tools."
         reply = response.get("content") or "No response from the local model."
@@ -62,6 +63,7 @@ class Worker:
             if self.stop.is_set():
                 return
             if self.installed:
+                require_avx2()
                 project = ASSETS.parent
                 model = self.set_up_model()
                 if model is None:
@@ -70,7 +72,8 @@ class Worker:
                 project, model = runtime_root(read_config()), None
             self.server = LocalServer(project, stop=self.stop, model_path=model,
                                       startup_timeout=240 if self.installed else 120,
-                                      skip_warmup=self.installed)
+                                      skip_warmup=self.installed,
+                                      threads=min(6, os.cpu_count() or 4) if self.installed else 6)
             with self.server:
                 if self.stop.is_set():
                     return
@@ -304,6 +307,15 @@ def launch(tk, ttk, installed=False):
         root.mainloop()
     finally:
         worker.close()
+
+
+def require_avx2():
+    if sys.platform != "win32":
+        raise RuntimeError("This bundled runtime is for native x64 Windows.")
+    import ctypes
+    # PF_AVX2_INSTRUCTIONS_AVAILABLE from the Windows SDK.
+    if not ctypes.windll.kernel32.IsProcessorFeaturePresent(40):
+        raise RuntimeError("This version of Frankesso requires a Windows x64 processor with AVX2 support.")
 
 
 def windows_identity(installed):

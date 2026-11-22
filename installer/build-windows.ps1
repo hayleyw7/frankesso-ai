@@ -51,8 +51,8 @@ Run-Checked git @('-C',$llama,'checkout','--detach','FETCH_HEAD')
 if ((& git -C $llama rev-parse HEAD) -ne $llamaCommit) { throw 'llama.cpp revision mismatch.' }
 Run-Checked cmake @('-S',$llama,'-B',$llamaOut,'-G','Visual Studio 17 2022','-A','x64',
     '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded','-DBUILD_SHARED_LIBS=OFF','-DGGML_BACKEND_DL=OFF',
-    '-DGGML_OPENMP=OFF','-DGGML_NATIVE=OFF','-DGGML_SSE42=OFF','-DGGML_AVX=OFF',
-    '-DGGML_AVX2=OFF','-DGGML_BMI2=OFF','-DLLAMA_OPENSSL=OFF','-DLLAMA_BUILD_TESTS=OFF',
+    '-DGGML_OPENMP=OFF','-DGGML_NATIVE=OFF','-DGGML_SSE42=ON','-DGGML_AVX=ON',
+    '-DGGML_AVX2=ON','-DGGML_BMI2=OFF','-DLLAMA_OPENSSL=OFF','-DLLAMA_BUILD_TESTS=OFF',
     '-DLLAMA_BUILD_EXAMPLES=OFF','-DLLAMA_BUILD_UI=OFF','-DLLAMA_USE_PREBUILT_UI=OFF',
     '-DLLAMA_CONNECT=OFF','-DLLAMA_BUILD_APP=OFF','-DLLAMA_BUILD_SERVER=ON')
 Run-Checked cmake @('--build',$llamaOut,'--config','Release','--target','llama-server','--parallel','4')
