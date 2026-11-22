@@ -66,7 +66,7 @@ if (Test-Path (Join-Path $llama 'licenses')) {
 $llamaExe = Join-Path $runner 'llama-server.exe'
 $help = & $llamaExe '--help' 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0) { throw 'The bundled runtime could not start.' }
-foreach ($flag in @('--offline','--no-agent','--no-ui-mcp-proxy','--no-ui','--no-op-offload','--reasoning')) {
+foreach ($flag in @('--offline','--no-agent','--no-ui-mcp-proxy','--no-ui','--no-op-offload','--reasoning','--no-warmup')) {
     if (-not $help.Contains($flag)) { throw "The bundled runtime lacked required flag $flag." }
 }
 

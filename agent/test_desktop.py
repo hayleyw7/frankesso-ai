@@ -67,6 +67,25 @@ class DesktopTests(unittest.TestCase):
         check.connect_ex.assert_called_once_with(("127.0.0.1", agent.PORT))
         launch.assert_not_called()
 
+    @patch.object(run_agent.subprocess, "Popen")
+    @patch.object(run_agent.socket, "socket")
+    def test_packaged_startup_skips_warmup_and_retains_failure_diagnostics(self, socket, launch):
+        socket.return_value.__enter__.return_value.connect_ex.return_value = 1
+        def process(*args, **kwargs):
+            self.assertIn("--no-warmup", args[0])
+            kwargs["stderr"].write("synthetic garden runtime failed\n")
+            kwargs["stderr"].flush()
+            result = Mock(returncode=7)
+            result.poll.return_value = 7
+            return result
+        launch.side_effect = process
+        server = LocalServer(Path("."), skip_warmup=True)
+        with self.assertRaisesRegex(RuntimeError, "exited"):
+            with server:
+                self.fail("Unexpected startup")
+        self.assertIn("synthetic garden runtime failed", server.startup_log)
+        self.assertFalse(server.log_path.exists())
+
     def test_icon_wraps_existing_bunny_asset(self):
         icon = (desktop.ASSETS / "frankesso.ico").read_bytes()
         self.assertEqual(struct.unpack("<HHH", icon[:6]), (0, 1, 1))

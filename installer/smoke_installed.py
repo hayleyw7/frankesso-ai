@@ -40,8 +40,11 @@ if os.environ.get("FULL_MODEL_SMOKE") == "1":
         worker = desktop.Worker(installed=True)
         try:
             assert worker.outbox.get(timeout=20)[0] == "status"
-            kind, message = worker.outbox.get(timeout=180)
-            assert kind == "ready", message
+            kind, message = worker.outbox.get(timeout=265)
+            if kind != "ready":
+                if worker.server and worker.server.startup_log:
+                    print(worker.server.startup_log, file=sys.stderr)
+                raise AssertionError(message)
             worker.inbox.put("Name one common plant. One word only.")
             kind, reply = worker.outbox.get(timeout=180)
             assert kind == "reply", reply

@@ -68,7 +68,9 @@ class Worker:
                     return
             else:
                 project, model = runtime_root(read_config()), None
-            self.server = LocalServer(project, stop=self.stop, model_path=model)
+            self.server = LocalServer(project, stop=self.stop, model_path=model,
+                                      startup_timeout=240 if self.installed else 120,
+                                      skip_warmup=self.installed)
             with self.server:
                 if self.stop.is_set():
                     return

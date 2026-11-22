@@ -18,10 +18,13 @@ def server_environment(source=None):
 
 
 class LocalServer:
-    def __init__(self, project, stop=None, model_path=None):
+    def __init__(self, project, stop=None, model_path=None, startup_timeout=120, skip_warmup=False):
         self.project = Path(project)
         self.process = None
         self.stop = stop
+        self.startup_timeout = startup_timeout
+        self.skip_warmup = skip_warmup
+        self.startup_log = ""
         self.model_path = model_path or self.project / "models" / "Qwen3-4B-Q4_K_M.gguf"
 
     def __enter__(self):
@@ -29,7 +32,8 @@ class LocalServer:
             if check.connect_ex(("127.0.0.1", agent.PORT)) == 0:
                 raise RuntimeError("Agent port 18081 is already in use; no process was changed.")
         self.logs = tempfile.TemporaryDirectory(prefix="local-agent-server-")
-        self.log = (Path(self.logs.name) / "server.log").open("w", encoding="utf-8")
+        self.log_path = Path(self.logs.name) / "server.log"
+        self.log = self.log_path.open("w", encoding="utf-8")
         args = [str(self.project / "runner" / "llama-server.exe"), "-m",
                 str(self.model_path),
                 "--alias", "local-qwen", "--host", "127.0.0.1", "--port", str(agent.PORT),
@@ -37,32 +41,39 @@ class LocalServer:
                 "--offline", "--no-agent", "--no-ui-mcp-proxy", "--no-ui",
                 "-c", "4096", "-np", "1", "--device", "none", "-ngl", "0",
                 "--no-op-offload", "-t", "6", "--jinja", "--reasoning", "off"]
+        if self.skip_warmup:
+            args.append("--no-warmup")
         try:
             self.process = subprocess.Popen(args, cwd=self.project, stdout=self.log, stderr=self.log, env=server_environment(),
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            for _ in range(120):
+            last_health = "no response"
+            deadline = time.monotonic() + self.startup_timeout
+            while time.monotonic() < deadline:
                 if self.stop is not None and self.stop.is_set():
                     raise RuntimeError("Startup canceled.")
                 if self.process.poll() is not None:
-                    raise RuntimeError("Agent server exited; existing chat configuration was not changed.")
+                    raise RuntimeError(f"Agent server exited ({self.process.returncode}); existing chat configuration was not changed.")
                 connection = http.client.HTTPConnection("127.0.0.1", agent.PORT, timeout=2)
                 try:
                     connection.request("GET", "/health")
                     response = connection.getresponse()
-                    response.read()
+                    response.read(512)
+                    last_health = f"HTTP {response.status}"
                     if response.status == 200:
                         return self
-                except OSError:
-                    pass
+                    if response.status != 503:
+                        raise RuntimeError(f"Local model returned unexpected health status: {last_health}.")
+                except (OSError, http.client.HTTPException) as error:
+                    last_health = type(error).__name__
                 finally:
                     connection.close()
                 if self.stop is not None:
                     self.stop.wait(1)
                 else:
                     time.sleep(1)
-            raise RuntimeError("Agent server did not become ready within two minutes")
+            raise RuntimeError(f"Agent server was not ready after {self.startup_timeout}s ({last_health}).")
         except BaseException:
-            self.__exit__(None, None, None)
+            self._cleanup(capture_startup=True)
             raise
 
     def cancel(self):
@@ -77,6 +88,9 @@ class LocalServer:
                 pass
 
     def __exit__(self, *_):
+        self._cleanup()
+
+    def _cleanup(self, capture_startup=False):
         if self.process and self.process.poll() is None:
             self.process.terminate()
             try:
@@ -85,6 +99,15 @@ class LocalServer:
                 self.process.kill()
                 self.process.wait()
         self.log.close()
+        if capture_startup:
+            # Failure is before accepting user prompts. Keep only a small tail
+            # for package smoke tests, outside the ordinary chat transcript.
+            try:
+                with self.log_path.open("rb") as log:
+                    log.seek(max(0, self.log_path.stat().st_size - 8192))
+                    self.startup_log = log.read(8192).decode("utf-8", errors="replace")
+            except OSError:
+                pass
         self.logs.cleanup()
 
 
