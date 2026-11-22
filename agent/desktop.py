@@ -145,6 +145,47 @@ class Worker:
             self.server.cancel()
 
 
+CREAM = "#FAF2E4"
+INK = "#0A0909"
+
+
+def apply_chat_theme(root, ttk):
+    """Apply the shared palette to app content, not native window chrome."""
+    root.configure(background=CREAM)
+    style = ttk.Style(root)
+    # The Windows theme ignores several custom widget colors. Clam gives the
+    # app styling control while the OS still owns the actual window frame.
+    style.theme_use("clam")
+    style.configure("Frankesso.TFrame", background=CREAM)
+    style.configure("Frankesso.TLabel", background=CREAM, foreground=INK)
+    for name, background, foreground in (
+        ("Frankesso.Primary.TButton", INK, CREAM),
+        ("Frankesso.Secondary.TButton", CREAM, INK),
+    ):
+        style.configure(name, background=background, foreground=foreground,
+                        bordercolor=INK, lightcolor=background, darkcolor=background,
+                        focuscolor=foreground, focusthickness=2)
+        style.map(name,
+                  background=[("disabled", CREAM), ("pressed", foreground), ("active", foreground)],
+                  foreground=[("disabled", INK), ("pressed", background), ("active", background)],
+                  bordercolor=[("disabled", CREAM)],
+                  focuscolor=[("pressed", background), ("active", background)],
+                  lightcolor=[("disabled", CREAM), ("pressed", foreground), ("active", foreground)],
+                  darkcolor=[("disabled", CREAM), ("pressed", foreground), ("active", foreground)])
+    style.configure("Frankesso.Vertical.TScrollbar", background=INK,
+                    troughcolor=CREAM, bordercolor=INK, lightcolor=INK, darkcolor=INK, arrowcolor=CREAM)
+    style.map("Frankesso.Vertical.TScrollbar", background=[("active", INK)])
+    style.configure("Frankesso.Horizontal.TProgressbar", background=INK, troughcolor=CREAM,
+                    bordercolor=INK, lightcolor=INK, darkcolor=INK)
+
+
+def chat_text_colors():
+    return dict(background=CREAM, foreground=INK, insertbackground=INK,
+                selectbackground=INK, selectforeground=CREAM,
+                highlightcolor=INK, highlightbackground=INK,
+                highlightthickness=1, borderwidth=0)
+
+
 def launch(tk, ttk, installed=False):
     root = tk.Tk()
     root.title("Frankesso")
@@ -155,39 +196,40 @@ def launch(tk, ttk, installed=False):
     except tk.TclError:
         pass
 
-    frame = ttk.Frame(root, padding=18)
+    apply_chat_theme(root, ttk)
+    frame = ttk.Frame(root, padding=18, style="Frankesso.TFrame")
     frame.grid(sticky="nsew")
     root.rowconfigure(0, weight=1)
     root.columnconfigure(0, weight=1)
     frame.rowconfigure(3, weight=1)
     frame.columnconfigure(0, weight=1)
 
-    header = ttk.Frame(frame)
+    header = ttk.Frame(frame, style="Frankesso.TFrame")
     header.grid(row=0, column=0, sticky="ew")
     header.columnconfigure(1, weight=1)
     logo = tk.PhotoImage(file=str(ASSETS / "frankesso-favicon.png"))
-    ttk.Label(header, image=logo).grid(row=0, column=0, rowspan=2, padx=(0, 12))
-    ttk.Label(header, text="Frankesso", font=("Segoe UI", 18, "bold")).grid(row=0, column=1, sticky="sw")
-    ttk.Label(header, text="Offline desktop chat · Text only").grid(row=1, column=1, sticky="nw")
+    ttk.Label(header, style="Frankesso.TLabel", image=logo).grid(row=0, column=0, rowspan=2, padx=(0, 12))
+    ttk.Label(header, style="Frankesso.TLabel", text="Frankesso", font=("Segoe UI", 18, "bold")).grid(row=0, column=1, sticky="sw")
+    ttk.Label(header, style="Frankesso.TLabel", text="Offline desktop chat · Text only").grid(row=1, column=1, sticky="nw")
     status = tk.StringVar(value="Starting the local model…")
-    ttk.Label(frame, textvariable=status).grid(row=1, column=0, pady=(10, 6), sticky="w")
+    ttk.Label(frame, style="Frankesso.TLabel", textvariable=status).grid(row=1, column=0, pady=(10, 6), sticky="w")
 
-    chat_frame = ttk.Frame(frame)
+    chat_frame = ttk.Frame(frame, style="Frankesso.TFrame")
     chat_frame.grid(row=3, column=0, sticky="nsew")
     chat_frame.columnconfigure(0, weight=1)
     chat_frame.rowconfigure(0, weight=1)
     output = tk.Text(chat_frame, wrap="word", state="disabled", font=("Segoe UI", 11),
-                     padx=12, pady=10, height=8)
+                     padx=12, pady=10, height=8, **chat_text_colors())
     output.grid(row=0, column=0, sticky="nsew")
-    scroll = ttk.Scrollbar(chat_frame, orient="vertical", command=output.yview)
+    scroll = ttk.Scrollbar(chat_frame, orient="vertical", command=output.yview, style="Frankesso.Vertical.TScrollbar")
     scroll.grid(row=0, column=1, sticky="ns")
     output.configure(yscrollcommand=scroll.set)
 
-    ttk.Label(frame, text="Message  ·  Enter to send, Shift+Enter for a new line").grid(
+    ttk.Label(frame, style="Frankesso.TLabel", text="Message  ·  Enter to send, Shift+Enter for a new line").grid(
         row=4, column=0, pady=(12, 4), sticky="w")
-    entry = tk.Text(frame, wrap="word", height=3, font=("Segoe UI", 11), padx=8, pady=6)
+    entry = tk.Text(frame, wrap="word", height=3, font=("Segoe UI", 11), padx=8, pady=6, **chat_text_colors())
     entry.grid(row=5, column=0, sticky="ew")
-    buttons = ttk.Frame(frame)
+    buttons = ttk.Frame(frame, style="Frankesso.TFrame")
     buttons.grid(row=6, column=0, sticky="ew", pady=(8, 0))
 
     def append(speaker, text):
@@ -223,23 +265,23 @@ def launch(tk, ttk, installed=False):
         worker.inbox.put(None)
         entry.focus_set()
 
-    send_button = ttk.Button(buttons, text="Send", command=send)
+    send_button = ttk.Button(buttons, text="Send", style="Frankesso.Primary.TButton", command=send)
     send_button.pack(side="right")
-    new_button = ttk.Button(buttons, text="New chat", command=new_chat)
+    new_button = ttk.Button(buttons, text="New chat", style="Frankesso.Secondary.TButton", command=new_chat)
     new_button.pack(side="right", padx=(0, 8))
     available(False)
     entry.bind("<Return>", send)
     entry.bind("<Shift-Return>", lambda _: None)
     entry.focus_set()
     worker = Worker(installed=installed)
-    setup = ttk.Frame(frame, padding=(0, 6, 0, 10))
+    setup = ttk.Frame(frame, padding=(0, 6, 0, 10), style="Frankesso.TFrame")
     setup.grid(row=2, column=0, sticky="ew")
     setup.columnconfigure(0, weight=1)
     setup.grid_remove()
-    ttk.Label(setup, text="One-time model download · 2.5 GB").grid(row=0, column=0, sticky="w")
-    ttk.Label(setup, text="Downloads from Hugging Face. No account required.").grid(
+    ttk.Label(setup, style="Frankesso.TLabel", text="One-time model download · 2.5 GB").grid(row=0, column=0, sticky="w")
+    ttk.Label(setup, style="Frankesso.TLabel", text="Downloads from Hugging Face. No account required.").grid(
         row=1, column=0, sticky="w")
-    progress_bar = ttk.Progressbar(setup, maximum=100)
+    progress_bar = ttk.Progressbar(setup, maximum=100, style="Frankesso.Horizontal.TProgressbar")
     progress_bar.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
     progress_bar.grid_remove()
 
@@ -256,9 +298,9 @@ def launch(tk, ttk, installed=False):
         cancel_button.state(["disabled"])
         status.set("Canceling the download…")
 
-    download_button = ttk.Button(setup, text="Download model", command=get_model)
+    download_button = ttk.Button(setup, text="Download model", style="Frankesso.Primary.TButton", command=get_model)
     download_button.grid(row=0, column=1, sticky="e")
-    cancel_button = ttk.Button(setup, text="Cancel", command=cancel_download)
+    cancel_button = ttk.Button(setup, text="Cancel", style="Frankesso.Secondary.TButton", command=cancel_download)
     cancel_button.grid(row=1, column=1, sticky="e")
     cancel_button.grid_remove()
 

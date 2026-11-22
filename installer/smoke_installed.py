@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from threading import Event
 import tkinter as tk
+from tkinter import ttk
 from unittest.mock import patch
 
 app = Path(os.environ["SMOKE_APP_ROOT"])
@@ -18,6 +19,11 @@ try:
     icon = tk.PhotoImage(file=str(app / "assets/frankesso-favicon.png"))
     assert icon.width() == 128
     root.iconbitmap(default=str(app / "assets/frankesso.ico"))
+    desktop.apply_chat_theme(root, ttk)
+    assert root.cget("background").upper() == "#FAF2E4"
+    style = ttk.Style(root)
+    assert style.lookup("Frankesso.Primary.TButton", "background").upper() == "#0A0909"
+    assert style.lookup("Frankesso.Primary.TButton", "foreground").upper() == "#FAF2E4"
     root.update()
 finally:
     root.destroy()

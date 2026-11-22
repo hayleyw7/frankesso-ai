@@ -87,6 +87,18 @@ class DesktopTests(unittest.TestCase):
         self.assertIn("synthetic garden runtime failed", server.startup_log)
         self.assertFalse(server.log_path.exists())
 
+    def test_windows_content_uses_shared_cream_palette(self):
+        root, ttk = Mock(), Mock()
+        desktop.apply_chat_theme(root, ttk)
+        root.configure.assert_called_once_with(background="#FAF2E4")
+        styles = {call.args[0]: call.kwargs for call in ttk.Style.return_value.configure.call_args_list}
+        primary = styles["Frankesso.Primary.TButton"]
+        self.assertEqual((primary["background"], primary["foreground"]), ("#0A0909", "#FAF2E4"))
+        self.assertEqual(styles["Frankesso.Secondary.TButton"]["background"], "#FAF2E4")
+        self.assertEqual(styles["Frankesso.TLabel"]["foreground"], "#0A0909")
+        self.assertEqual(desktop.chat_text_colors()["background"], "#FAF2E4")
+        self.assertNotEqual(primary["background"], primary["focuscolor"])
+
     def test_icon_wraps_existing_bunny_asset(self):
         icon = (desktop.ASSETS / "frankesso.ico").read_bytes()
         self.assertEqual(struct.unpack("<HHH", icon[:6]), (0, 1, 1))
