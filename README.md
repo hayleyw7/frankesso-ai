@@ -10,7 +10,13 @@ Frankesso supports bounded local text search, text edits with previews and backu
 - **Available now:** Windows.
 - **Planned:** Linux, Android, macOS, and iOS.
 
-## Start locally
+## Windows desktop app
+
+Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, run `Frankesso-2.0.0-Windows-x64-Setup.exe` and open **Frankesso** from Start. Setup is for the current Windows user and bundles Python, Tk, and the CPU model runner. No admin access, Git, separate Python, or terminal setup is required. Native ARM64 and 32-bit Windows are not supported by this installer.
+
+The first time you open it, choose **Download model** to get Qwen3-4B (2.5 GB) from Hugging Face. It shows progress, supports cancel and retry, and checks the exact download before using it. Afterward, the chat runs offline. The desktop app is text-only and does not load web, private-skill, or file-editing tools. Those remain available through the separate CLI, with its existing approvals. Uninstall from Windows **Installed apps** to remove the desktop app, Start shortcut, and its model download; your source checkout or separate CLI files are unaffected.
+
+## Developer setup and command-line tools
 
 1. Keep the repository's folder structure intact. You need an existing runtime folder containing `runner/llama-server.exe` and `models/Qwen3-4B-Q4_K_M.gguf`, plus a local Python interpreter. No runner, model, package, or driver is downloaded automatically.
 2. For a new installation, copy [agent/access.example.json](agent/access.example.json) to `%LOCALAPPDATA%\Frankesso\access.json`. Set `runtime_root` to the existing runtime folder; an empty value defaults to the repository root. Keep this machine-specific file outside the repository.
@@ -22,14 +28,6 @@ Existing installations can keep their private configuration and use the same `St
 The launcher prefers an existing Codex bundled Python and falls back to `python` on PATH. Core tools use Python's standard library; PDF text extraction requires `pypdf`, and image metadata requires Pillow, in the selected interpreter. No dependency installation runs automatically.
 
 The launcher starts a separate CPU-only llama.cpp server on `127.0.0.1:18081` and opens the interactive controller in the current console. It refuses to take over an occupied port and stops only its own server on exit. An existing ordinary chat launcher and port 18080 are unchanged. See the [test evidence](agent/TEST-RESULTS.md) for the runtime version previously verified.
-
-## Windows desktop chat
-
-After setting up the same local Python and model runtime above, run `Install Frankesso Desktop.cmd` once. It adds a **Frankesso** shortcut with the coffee bunny icon to your own Windows Start menu, without admin access. Search for Frankesso in Start to open the window. The selected Python must include Tkinter and `pythonw.exe`; nothing is downloaded or installed by the shortcut setup.
-
-The desktop window is text-only and offline: it never loads file tools, private skills, or web search. Conversation context is kept in memory while the window is open, and **New chat** clears it. Use **Enter** to send, **Shift+Enter** for a line break, and `Start Frankesso.cmd` for the full terminal workflow with approvals. Close one before opening the other; both use the same isolated local model port.
-
-Keep this repository at its current location, or rerun the installer after moving it. To remove just the shortcut, run `"Install Frankesso Desktop.cmd" --remove` in Command Prompt from the repository folder, or remove Frankesso's shortcut from `shell:programs` in File Explorer.
 
 ## File access and approvals
 
@@ -87,12 +85,12 @@ Run these commands on Windows, from the repository root:
 
 ```cmd
 cd agent
-python -B -m unittest -v test_agent test_web_search test_documents test_private_skills test_desktop
+python -B -m unittest -v test_agent test_web_search test_documents test_private_skills test_desktop test_model_setup
 ```
 
 The suite exercises permissions, real-broker denial without networking, fake HTTP responses, bounded parsers, private-skill isolation, and synthetic fixtures. Use the existing bundled Python, or another interpreter with `pypdf` and Pillow, to include PDF and image tests; those tests skip when the libraries are unavailable. The absolute-path permission test targets Windows path semantics, not POSIX paths.
 
-For a desktop smoke test on Windows, run `-m tkinter` with the exact `python.exe` selected by the desktop installer (the bundled copy if it has Tkinter, otherwise the one on PATH). Confirm its demo opens. Then run the installer and search for **Frankesso** in Start. Check the bunny icon, send two messages with networking off, start a new chat, and close the window. Try opening the desktop while the CLI has port 18081 to confirm the desktop declines and leaves the CLI running. Reopen after closing the CLI.
+The [Windows installer workflow](.github/workflows/windows-installer.yml) builds an unsigned test artifact and runs install/Start shortcut/uninstall checks in a separate Windows runner. The manual full-model check downloads the pinned model and runs real local inference using the installed app. See [installer verification](installer/README.md) for the Windows release gate. A source checkout can still launch the developer desktop preview using `Install Frankesso Desktop.cmd` after setting up a local Python with Tkinter and the runtime; that's not the v2 installer.
 
 From the same `agent` directory, run the actual-model integration test with the path to your existing runtime folder:
 

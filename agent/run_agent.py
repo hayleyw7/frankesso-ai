@@ -18,10 +18,11 @@ def server_environment(source=None):
 
 
 class LocalServer:
-    def __init__(self, project, stop=None):
+    def __init__(self, project, stop=None, model_path=None):
         self.project = Path(project)
         self.process = None
         self.stop = stop
+        self.model_path = model_path or self.project / "models" / "Qwen3-4B-Q4_K_M.gguf"
 
     def __enter__(self):
         with socket.socket() as check:
@@ -30,7 +31,7 @@ class LocalServer:
         self.logs = tempfile.TemporaryDirectory(prefix="local-agent-server-")
         self.log = (Path(self.logs.name) / "server.log").open("w", encoding="utf-8")
         args = [str(self.project / "runner" / "llama-server.exe"), "-m",
-                str(self.project / "models" / "Qwen3-4B-Q4_K_M.gguf"),
+                str(self.model_path),
                 "--alias", "local-qwen", "--host", "127.0.0.1", "--port", str(agent.PORT),
                 "--cors-origins", "localhost",
                 "--offline", "--no-agent", "--no-ui-mcp-proxy", "--no-ui",
