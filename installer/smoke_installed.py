@@ -10,7 +10,6 @@ app = Path(os.environ["SMOKE_APP_ROOT"])
 sys.path.insert(0, str(app / "agent"))
 import desktop
 import model_setup
-from run_agent import LocalServer
 
 
 root = tk.Tk()
@@ -36,10 +35,20 @@ if os.environ.get("FULL_MODEL_SMOKE") == "1":
     destination = Path(os.environ["LOCALAPPDATA"]) / "FrankessoDesktop" / "models"
     model = model_setup.download(destination, Event(), lambda *_: None)
     assert model_setup.verify(model, Event())
-    # Test the installed text client without allowing its downloader to connect.
-    with patch.object(model_setup, "open_model", side_effect=AssertionError("Unexpected network download")):
-        with LocalServer(app, model_path=model) as server:
-            reply = desktop.Chat().ask("Name one common plant. One word only.")
+    # Exercise the same startup, local reply, and shutdown as the installed GUI.
+    with patch.object(model_setup, "download", side_effect=AssertionError("Unexpected network download")):
+        worker = desktop.Worker(installed=True)
+        try:
+            assert worker.outbox.get(timeout=20)[0] == "status"
+            kind, message = worker.outbox.get(timeout=180)
+            assert kind == "ready", message
+            worker.inbox.put("Name one common plant. One word only.")
+            kind, reply = worker.outbox.get(timeout=180)
+            assert kind == "reply", reply
             assert reply.strip() and reply != "No response from the local model."
-            assert server.process.poll() is None
-        assert server.process.poll() is not None
+            assert worker.server.process.poll() is None
+        finally:
+            worker.close()
+            worker.thread.join(30)
+        assert not worker.thread.is_alive()
+        assert worker.server.process.poll() is not None

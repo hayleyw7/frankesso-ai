@@ -95,6 +95,9 @@ class Controller:
             "results": [], "note": "No network request occurred. Real web access is disabled."})
         self.audit = []
         self._check_components(self.root)
+        # Windows temp directories can arrive as 8.3 aliases. Match the
+        # normalized paths returned by path() when displaying sandbox files.
+        self.root = self.root.resolve()
         self.private_context = False
         self.active_skill = None
         self.skill_loads_this_turn = 0

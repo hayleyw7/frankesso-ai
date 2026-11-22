@@ -56,5 +56,5 @@ jobs:
       - name: Install, inspect shortcut, start the app, and uninstall
         shell: pwsh
         env:
-          FULL_MODEL_SMOKE: ${{ inputs.full_model_smoke && '1' || '0' }}
+          FULL_MODEL_SMOKE: ${{ (inputs.full_model_smoke || github.base_ref == 'release/v2') && '1' || '0' }}
         run: ./installer/smoke-windows.ps1
