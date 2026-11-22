@@ -5,6 +5,11 @@ An offline-first Windows command-line assistant for an existing llama.cpp and Qw
 
 Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
+## Platform roadmap
+
+- **Available now:** Windows.
+- **Planned:** Linux, Android, macOS, and iOS.
+
 ## Start locally
 
 1. Keep the repository's folder structure intact. You need an existing runtime folder containing `runner/llama-server.exe` and `models/Qwen3-4B-Q4_K_M.gguf`, plus a local Python interpreter. No runner, model, package, or driver is downloaded automatically.
