@@ -57,8 +57,10 @@ class Tests(unittest.TestCase):
 
     def test_reparse_rejected(self):
         real = Path.lstat
+        # The Windows sandbox canonicalizes temp-directory short aliases.
+        target = self.file.resolve()
         def altered(path):
-            if path == self.file:
+            if path == target:
                 return type("Info", (), {"st_mode": 0o100644, "st_file_attributes": 0x400})()
             return real(path)
         with patch.object(Path, "lstat", altered):

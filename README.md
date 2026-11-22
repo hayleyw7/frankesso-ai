@@ -1,7 +1,7 @@
 # Frankesso
 <img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
 
-An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
+An offline-first Windows assistant with a command-line interface and a text-only desktop chat window for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
 
 Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
@@ -10,7 +10,13 @@ Frankesso supports bounded local text search, text edits with previews and backu
 - **Available now:** Windows.
 - **Planned:** Linux, Android, macOS, and iOS.
 
-## Start locally
+## Windows desktop app
+
+Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, run `Frankesso-2.0.0-Windows-x64-Setup.exe` and open **Frankesso** from Start. Setup is for the current Windows user and bundles Python, Tk, and the CPU model runner. No admin access, Git, separate Python, or terminal setup is required. The installer requires an AVX2-capable x64 processor. Native ARM64 and 32-bit Windows are not supported.
+
+The first time you open it, choose **Download model** to get Qwen3-4B (2.5 GB) from Hugging Face. It shows progress, supports cancel and retry, and checks the exact download before using it. Afterward, the chat runs offline. The desktop app is text-only and does not load web, private-skill, or file-editing tools. Those remain available through the separate CLI, with its existing approvals. Uninstall from Windows **Installed apps** to remove the desktop app, Start shortcut, and its model download; your source checkout or separate CLI files are unaffected.
+
+## Developer setup and command-line tools
 
 1. Keep the repository's folder structure intact. You need an existing runtime folder containing `runner/llama-server.exe` and `models/Qwen3-4B-Q4_K_M.gguf`, plus a local Python interpreter. No runner, model, package, or driver is downloaded automatically.
 2. For a new installation, copy [agent/access.example.json](agent/access.example.json) to `%LOCALAPPDATA%\Frankesso\access.json`. Set `runtime_root` to the existing runtime folder; an empty value defaults to the repository root. Keep this machine-specific file outside the repository.
@@ -22,6 +28,14 @@ Existing installations can keep their private configuration and use the same `St
 The launcher prefers an existing Codex bundled Python and falls back to `python` on PATH. Core tools use Python's standard library; PDF text extraction requires `pypdf`, and image metadata requires Pillow, in the selected interpreter. No dependency installation runs automatically.
 
 The launcher starts a separate CPU-only llama.cpp server on `127.0.0.1:18081` and opens the interactive controller in the current console. It refuses to take over an occupied port and stops only its own server on exit. An existing ordinary chat launcher and port 18080 are unchanged. See the [test evidence](agent/TEST-RESULTS.md) for the runtime version previously verified.
+
+## Local chat history & memory
+
+In desktop chat and the CLI, type `Remember this: I label herb pots in teal.` to save a note. Type `/memories` to see saved notes, and `Forget <note ID or exact text>` to remove one. Frankesso does not save notes automatically. Use `/chats`, `/open <ID>`, `/new`, and `/delete <ID>` to inspect, reopen, start, or delete local chats. Forgetting a note does not erase old chats that mention it; deleting a chat does not remove separate notes.
+
+Use `Let's talk:` to discuss an idea or `Just the diff:` to see a proposed patch without editing a file. The GUI always runs text-only. CLI turns that use tools or follow loading private skills are not recorded.
+
+Chats and notes are ordinary unencrypted files local to this Windows account. Uninstall removes the app and model but keeps separate chat and note data so it stays available for the CLI or a reinstall. To remove it, delete the relevant chats and notes from Frankesso. The local data folder is `%LOCALAPPDATA%\Frankesso\chat-state`.
 
 ## File access and approvals
 
@@ -69,7 +83,7 @@ Once a session lists, loads, or otherwise accesses the configured private skills
 
 The model connection uses a fixed numeric loopback address without proxies or redirect following. The launcher strips inherited `LLAMA_ARG_*` variables and uses `--offline --no-agent --no-ui-mcp-proxy --no-ui`; model-provided tool calls are interpreted by this controller, not executed by llama.cpp's built-in tools.
 
-The 4B model can make mistakes; malformed tool calls and unknown tools are rejected. Each prompt is a fresh model conversation, with the selected private skill reloaded when applicable. There is no durable conversational memory. File backups persist, but temporary session files are deleted on exit.
+The 4B model can make mistakes; malformed tool calls and unknown tools are rejected. Only the current request can authorize tool planning. Saved chat context is available solely for text-only replies. The CLI reloads a selected private skill when applicable. File backups persist, but temporary session files are deleted on exit.
 
 This is a capability-restricted controller, not an OS security boundary against malicious concurrent local processes. Do not expose its model port to a network or add unrestricted execution tools. Recorded runtime tests restricted controller socket connections to localhost; the PC's physical internet connection was not disabled. The server's offline mode is used, rather than a system firewall rule.
 
@@ -79,10 +93,12 @@ Run these commands on Windows, from the repository root:
 
 ```cmd
 cd agent
-python -B -m unittest -v test_agent test_web_search test_documents test_private_skills
+python -B -m unittest -v test_agent test_web_search test_documents test_private_skills test_desktop test_model_setup test_chat_state
 ```
 
 The suite exercises permissions, real-broker denial without networking, fake HTTP responses, bounded parsers, private-skill isolation, and synthetic fixtures. Use the existing bundled Python, or another interpreter with `pypdf` and Pillow, to include PDF and image tests; those tests skip when the libraries are unavailable. The absolute-path permission test targets Windows path semantics, not POSIX paths.
+
+The [Windows installer workflow](.github/workflows/windows-installer.yml) builds an unsigned test artifact and runs install/Start shortcut/uninstall checks in a separate Windows runner. The manual full-model check downloads the pinned model and runs real local inference using the installed app. See [installer verification](installer/README.md) for the Windows release gate. A source checkout can still launch the developer desktop preview using `Install Frankesso Desktop.cmd` after setting up a local Python with Tkinter and the runtime; that's not the v2 installer.
 
 From the same `agent` directory, run the actual-model integration test with the path to your existing runtime folder:
 
