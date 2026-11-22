@@ -18,3 +18,4 @@ backups/
 screenshots/
 .DS_Store
 Thumbs.db
+chat-state/

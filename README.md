@@ -23,6 +23,15 @@ The launcher prefers an existing Codex bundled Python and falls back to `python`
 
 The launcher starts a separate CPU-only llama.cpp server on `127.0.0.1:18081` and opens the interactive controller in the current console. It refuses to take over an occupied port and stops only its own server on exit. An existing ordinary chat launcher and port 18080 are unchanged. See the [test evidence](agent/TEST-RESULTS.md) for the runtime version previously verified.
 
+## Local chat history & memory
+
+- Try `Let's talk: How should I label my herb pots?` to discuss options without using tools or making changes.
+- Try `Just the diff: Show how you'd change this color rule…` for a proposed diff without editing files.
+- Type `Remember this: I label herb pots in teal.` to save a note. Type `/memories` to see your notes and `Forget <note ID or exact text>` to remove one. Nothing is added to memory automatically.
+- Type `/chats` to list saved chats, `/open <ID>` to show and resume one, `/new` to start a new chat, or `/delete <ID>` to remove it. Forgetting a note doesn't erase earlier messages that mention it. Deleting a chat doesn't delete your notes.
+
+Frankesso saves up to 200 plain-text messages per chat. Turns that call tools and turns after accessing private skills aren't written to chat history. Only short excerpts of recent messages and notes are available to the local model for text-only replies. When tools are available, only the current request goes into tool planning. Saved context can't invoke tools, change approvals, or be forwarded to web search by the app. There's no cloud sync. On Windows the files are under `%LOCALAPPDATA%\Frankesso\chat-state`; they're ordinary local files, not encrypted by Frankesso.
+
 ## File access and approvals
 
 Private `access.json` records approved local roots. Relative paths use a temporary session sandbox; absolute paths use approved roots within existing Windows permissions. Without a configuration file, no persistent roots are granted. No elevation or permission changes occur.
@@ -79,7 +88,7 @@ Run these commands on Windows, from the repository root:
 
 ```cmd
 cd agent
-python -B -m unittest -v test_agent test_web_search test_documents test_private_skills
+python -B -m unittest -v test_agent test_web_search test_documents test_private_skills test_chat_state
 ```
 
 The suite exercises permissions, real-broker denial without networking, fake HTTP responses, bounded parsers, private-skill isolation, and synthetic fixtures. Use the existing bundled Python, or another interpreter with `pypdf` and Pillow, to include PDF and image tests; those tests skip when the libraries are unavailable. The absolute-path permission test targets Windows path semantics, not POSIX paths.
