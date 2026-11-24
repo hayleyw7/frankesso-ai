@@ -34,6 +34,10 @@ class ChatTests(unittest.TestCase):
             first = self.model.call_args.args[0][0]["content"]
             self.assertIn("The device's local date is 2026-12-31.", first)
             self.assertIn("This gives the date only. It does not verify current events.", first)
+            self.assertIn("For facts that can change, use a reliable dated local reference if available.", first)
+            self.assertIn("State the fact as of the reference date", first)
+            self.assertIn("If no reliable dated reference is available", first)
+            self.assertIn("The app update date is not a reference.", first)
             clock.today.return_value = date(2027, 1, 1)
             self.assertEqual(self.turn("What's the date today?"), "Today is 2027-01-01.")
             self.assertEqual(self.turn("What year is it?"), "The current year is 2027.")

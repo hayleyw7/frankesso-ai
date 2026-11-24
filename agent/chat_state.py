@@ -198,7 +198,13 @@ PET_PEEVE_QUESTION = re.compile(r"(?:what(?:['’]s| is) your )?(?:biggest )?pet
 
 
 def device_date_context():
-    return f"\nThe device's local date is {date.today().isoformat()}. This gives the date only. It does not verify current events."
+    return (
+        f"\nThe device's local date is {date.today().isoformat()}. This gives the date only. It does not verify current events. "
+        "For facts that can change, use a reliable dated local reference if available. "
+        "State the fact as of the reference date, separate from the device date, and say you cannot verify that it is still current. "
+        "If no reliable dated reference is available, say you cannot verify. Do not guess or invent a source or date. "
+        "The app update date is not a reference."
+    )
 
 
 def direct_response(prompt):
