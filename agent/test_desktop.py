@@ -49,6 +49,9 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(chat.ask("run the tests"), "Use clay pots.")
             messages = request.call_args.args[0]
             self.assertIn("interdimensional spooky coffee bunny", messages[0]["content"])
+            self.assertIn("Never use your persona to avoid answering.", messages[0]["content"])
+            self.assertIn("Do not introduce yourself or mention your identity or lore unless asked.",
+                          messages[0]["content"])
             self.assertIn("teal ink", messages[1]["content"])
             self.assertFalse(request.call_args.kwargs["tools_enabled"])
             first_chat = store.chat_id

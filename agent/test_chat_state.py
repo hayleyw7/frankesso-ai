@@ -23,6 +23,17 @@ class ChatTests(unittest.TestCase):
     def turn(self, prompt):
         return self.controller.chat_turn(prompt, self.model, self.reply)
 
+    def test_general_and_advice_requests_receive_the_direct_answer_policy(self):
+        self.turn("Tell me about Jupiter.")
+        self.turn("Let's talk: Replanting herbs.")
+        for request in (self.model, self.reply):
+            messages = request.call_args.args[0]
+            self.assertEqual(messages[0]["role"], "system")
+            for rule in ("Answer the question directly.", "If unsure, say so. Do not invent facts.",
+                         "Never use your persona to avoid answering.",
+                         "Do not introduce yourself or mention your identity or lore unless asked."):
+                self.assertIn(rule, messages[0]["content"])
+
     def test_manual_memory_persists_and_forgets_without_changing_history(self):
         self.turn("Sketch a leaf.")
         chat_id = self.chat.chat_id
