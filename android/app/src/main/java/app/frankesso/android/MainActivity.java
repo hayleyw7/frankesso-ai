@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public final class MainActivity extends Activity {
-    private static final String MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf";
+    private static final String MODEL_FILENAME = "Qwen3-4B-Q4_K_M.gguf";
     private static final long COPY_RESERVE_BYTES = 32L * 1024 * 1024;
     private static final Object MODEL_SETUP_LOCK = new Object();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -185,7 +185,7 @@ public final class MainActivity extends Activity {
                         if (closing.get()) return;
                         long usable = modelPath.getParent().toFile().getUsableSpace();
                         if (usable < ModelImport.MODEL_BYTES + COPY_RESERVE_BYTES) {
-                            complete(false, "Free at least 525 MB of device storage, then tap Retry setup.");
+                            complete(false, "Free at least 2.6 GB of device storage, then tap Retry setup.");
                             return;
                         }
                         unpackBundledModel();
@@ -204,15 +204,25 @@ public final class MainActivity extends Activity {
 
     private void unpackBundledModel() throws IOException {
         onUi(() -> status.setText("Preparing offline chat… 0%"));
-        try (InputStream input = getAssets().open(MODEL_FILENAME, android.content.res.AssetManager.ACCESS_STREAMING)) {
-            int[] lastProgress = {0};
-            ModelImport.copyVerified(input, modelPath, ModelImport.MODEL_BYTES, ModelImport.MODEL_SHA256,
-                    closing::get, copied -> {
-                        int percent = (int) (copied * 100 / ModelImport.MODEL_BYTES);
-                        if (percent != 100 && percent - lastProgress[0] < 5) return;
-                        lastProgress[0] = percent;
-                        onUi(() -> status.setText("Preparing offline chat… " + percent + "%"));
-                    });
+        var assets = getAssets();
+        var parts = new java.util.Vector<InputStream>(3);
+        try {
+            for (int i = 0; i < 3; i++) {
+                parts.add(assets.open(MODEL_FILENAME + "." + i + ".part",
+                        android.content.res.AssetManager.ACCESS_STREAMING));
+            }
+            try (InputStream input = new java.io.SequenceInputStream(parts.elements())) {
+                int[] lastProgress = {0};
+                ModelImport.copyVerified(input, modelPath, ModelImport.MODEL_BYTES, ModelImport.MODEL_SHA256,
+                        closing::get, copied -> {
+                            int percent = (int) (copied * 100 / ModelImport.MODEL_BYTES);
+                            if (percent != 100 && percent - lastProgress[0] < 5) return;
+                            lastProgress[0] = percent;
+                            onUi(() -> status.setText("Preparing offline chat… " + percent + "%"));
+                        });
+            }
+        } finally {
+            for (InputStream part : parts) part.close();
         }
     }
 

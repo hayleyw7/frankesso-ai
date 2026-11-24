@@ -12,8 +12,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.LongConsumer;
 
 final class ModelImport {
-    static final long MODEL_BYTES = 491_400_032L;
-    static final String MODEL_SHA256 = "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db";
+    static final long MODEL_BYTES = 2_497_280_256L;
+    static final String MODEL_SHA256 = "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5";
 
     private ModelImport() { }
 
@@ -66,7 +66,7 @@ final class ModelImport {
     }
 
     private static IOException invalidModel() {
-        return new IOException("The bundled Qwen2.5 Instruct model did not pass its integrity check.");
+        return new IOException("The bundled Qwen3 4B model did not pass its integrity check.");
     }
 
     private static MessageDigest sha256() {

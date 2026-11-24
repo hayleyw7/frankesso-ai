@@ -2,6 +2,8 @@ name: Android bundled-model debug build
 on:
   pull_request:
     paths: ['android/**', '.github/workflows/android.yml']
+  push:
+    branches: ['test/android-qwen3-4b']
   workflow_dispatch:
 
 permissions:
@@ -13,7 +15,7 @@ env:
 jobs:
   apk:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -47,17 +49,17 @@ jobs:
           python3 android/scripts/bundled_model.py verify-apk "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > "$RUNNER_TEMP/app-badging.txt"
-          grep -F "name='app.frankesso.android' versionCode='7' versionName='2.0.0-dev-bundled-preview.7'" "$RUNNER_TEMP/app-badging.txt"
+          grep -F "name='app.frankesso.android.qwen4b' versionCode='7' versionName='2.0.0-test-qwen3-4b'" "$RUNNER_TEMP/app-badging.txt"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | tee "$RUNNER_TEMP/app-permissions.txt"
           if grep -q "uses-permission" "$RUNNER_TEMP/app-permissions.txt"; then
             echo "The Android app must not request permissions."
             exit 1
           fi
           unzip -l "$apk" 'lib/arm64-v8a/libfrankesso.so' | grep -F 'lib/arm64-v8a/libfrankesso.so'
-          mv "$apk" "$RUNNER_TEMP/Frankesso-Android-bundled-${APK_SOURCE_SHA:0:7}-debug.apk"
+          mv "$apk" "$RUNNER_TEMP/Frankesso-Android-4B-${APK_SOURCE_SHA:0:7}-debug.apk"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          path: ${{ runner.temp }}/Frankesso-Android-bundled-*-debug.apk
+          path: ${{ runner.temp }}/Frankesso-Android-4B-*-debug.apk
           archive: false
           if-no-files-found: error
           retention-days: 7
@@ -65,8 +67,8 @@ jobs:
         run: |
           work="$RUNNER_TEMP/android-native-prompt"
           mkdir -p "$work/classes"
-          apk="$RUNNER_TEMP/Frankesso-Android-bundled-${APK_SOURCE_SHA:0:7}-debug.apk"
-          unzip -j "$apk" 'assets/*.gguf' -d "$work"
+          apk="$RUNNER_TEMP/Frankesso-Android-4B-${APK_SOURCE_SHA:0:7}-debug.apk"
+          python3 android/scripts/bundled_model.py verify-apk "$apk" --extract-to "$work/Qwen3-4B-Q4_K_M.gguf"
           java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
           export CPLUS_INCLUDE_PATH="$java_home/include:$java_home/include/linux"
           cmake -S android/app/src/main/cpp -B "$work/build" -DCMAKE_BUILD_TYPE=Release
@@ -101,20 +103,20 @@ jobs:
           fi
           emulator -list-avds | grep -x frankesso-ci
           emulator -accel-check
-          emulator -avd frankesso-ci -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -partition-size 4096 -memory 3072 >"$RUNNER_TEMP/emulator.log" 2>&1 &
+          emulator -avd frankesso-ci -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -partition-size 12288 -memory 6144 >"$RUNNER_TEMP/emulator.log" 2>&1 &
           trap 'tail -100 "$RUNNER_TEMP/emulator.log"; timeout 15 adb logcat -d -s AndroidRuntime libc DEBUG llama || true' ERR
           timeout --kill-after=5s 240 adb wait-for-device
           timeout 180 bash -c 'until [ "$(adb shell getprop sys.boot_completed | tr -d "\r")" = 1 ]; do sleep 3; done'
           adb shell getprop ro.product.cpu.abilist | grep -F 'arm64-v8a'
           adb shell input keyevent KEYCODE_WAKEUP
           adb shell wm dismiss-keyguard
-          adb install --abi arm64-v8a "$RUNNER_TEMP/Frankesso-Android-bundled-${APK_SOURCE_SHA:0:7}-debug.apk"
+          adb install --abi arm64-v8a "$RUNNER_TEMP/Frankesso-Android-4B-${APK_SOURCE_SHA:0:7}-debug.apk"
           adb shell svc wifi disable
           adb shell svc data disable
           adb shell settings put global airplane_mode_on 1
           adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true
           adb shell settings get global airplane_mode_on | grep -x 1
-          adb shell am start -W -n app.frankesso.android/.MainActivity
+          adb shell am start -W -n app.frankesso.android.qwen4b/app.frankesso.android.MainActivity
           python3 android/tests/check-offline-emulator.py
           adb exec-out screencap -p > "$RUNNER_TEMP/Frankesso-Android-offline-chat.png"
       - name: Save Android offline-chat screenshot

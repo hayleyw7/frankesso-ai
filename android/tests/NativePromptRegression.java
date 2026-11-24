@@ -17,6 +17,8 @@ public final class NativePromptRegression {
             report("file access", ChatPrompt.capabilityReply("Are you able to access files on my phone?"));
             report("device time", ChatPrompt.deviceClockReply("What time is it?", CLOCK, false));
             report("exact time follow-up", ChatPrompt.deviceClockReply("I want the literal exact time", CLOCK.plusMinutes(1), false));
+            report("cat weight", infer(model, new ChatPrompt(), "how much does a cat weigh"));
+            report("Jupiter false premise", infer(model, new ChatPrompt(), "Why is Jupiter smaller than Earth?"));
             report("Jupiter after identity", infer(model, chat, "Tell me two facts about Jupiter."));
             report("specific president without source", infer(model, new ChatPrompt(), "Who is the president of the USA?"));
             report("president with dated source", infer(model, new ChatPrompt(),

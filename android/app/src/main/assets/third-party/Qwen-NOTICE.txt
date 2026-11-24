@@ -1,6 +1,6 @@
-Qwen2.5-0.5B-Instruct-GGUF Q4_K_M
-Copyright 2024 Alibaba Cloud
+Qwen3-4B-GGUF Q4_K_M
+Qwen Team, Alibaba Cloud
 Distributed unmodified under the Apache License, Version 2.0 (see Qwen-Apache-2.0.txt).
-Official source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF
-Weight revision: 9217f5db79a29953eb74d5343926648285ec7e67
-SHA-256: 74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db
+Official source: https://huggingface.co/Qwen/Qwen3-4B-GGUF
+Weight revision: bc640142c66e1fdd12af0bd68f40445458f3869b
+SHA-256: 7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5
