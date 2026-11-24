@@ -37,15 +37,37 @@ final class ChatPrompt {
         };
     }
 
+    static final String COUNTRY_CLARIFICATION = "Which country do you mean?";
+    private static final String CANNOT_VERIFY_PRESIDENT =
+            "I can’t verify who currently holds that office offline.";
+    private static final Pattern CURRENT_PRESIDENT = Pattern.compile(
+            "who (?:is the |'s the |is |'s )(?:current )?president(?: of (?:the )?([\\p{L}\\p{M} .’-]+?))?(?: now| today)?[?!.]*",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern DATED_PRESIDENT = Pattern.compile(
+            "(.{1,120}?) dated ([a-z]+ [0-9]{1,2}, [0-9]{4}) lists ([\\p{L}\\p{M} .’-]{1,65}) as president\\.\\s*(.+)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
     String clarificationReply(String input) {
-        // Ordinary history may establish a jurisdiction. Let the model use that context.
-        if (!turns.isEmpty()) return null;
-        return switch (normalize(input)) {
-            case "who is the president", "who's the president", "who is the current president",
-                    "who's the current president", "who is president", "who's president" ->
-                    "Which country do you mean?";
-            default -> null;
-        };
+        String question = normalize(input).replaceFirst("^who's ", "who is ");
+        var dated = DATED_PRESIDENT.matcher(input.trim());
+        if (dated.matches()) {
+            var query = CURRENT_PRESIDENT.matcher(normalize(dated.group(4)).replaceFirst("^who's ", "who is "));
+            // Quote the user's statement only when it names the same jurisdiction in both clauses.
+            if (query.matches() && query.group(1) != null
+                    && (" " + dated.group(1).toLowerCase(Locale.ROOT) + " ").contains(" " + query.group(1) + " ")) {
+                try {
+                    var date = java.time.LocalDate.parse(dated.group(2), LONG_DATE.withResolverStyle(java.time.format.ResolverStyle.STRICT));
+                    return "The source you supplied lists " + dated.group(3) + " as president as of "
+                            + LONG_DATE.format(date) + ". " + CANNOT_VERIFY_PRESIDENT;
+                } catch (java.time.format.DateTimeParseException ignored) {
+                    return CANNOT_VERIFY_PRESIDENT;
+                }
+            }
+        }
+        var current = CURRENT_PRESIDENT.matcher(question);
+        if (!current.matches() || question.matches(".*\\b(?:in|during|after|before|under|when|was|were)\\b.*")) return null;
+        if (current.group(1) != null || !turns.isEmpty()) return CANNOT_VERIFY_PRESIDENT;
+        return COUNTRY_CLARIFICATION;
     }
 
     static String personaReply(String input) {
@@ -99,7 +121,8 @@ final class ChatPrompt {
                     "what time is it exactly", "what is the current time", "what's the current time",
                     "current time", "what time is it now", "tell me the time", "tell me the current time",
                     "what is my local time", "what's my local time", "can you tell me the time",
-                    "can you tell me what time it is" ->
+                    "can you tell me what time it is", "i want the literal exact time",
+                    "tell me the exact time", "i want the exact time", "what is the exact time" ->
                     "The device time is " + clockTime(local, use24Hour) + ".";
             case "what is the date and time", "what's the date and time",
                     "what is the current date and time", "what's the current date and time",

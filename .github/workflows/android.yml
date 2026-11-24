@@ -47,7 +47,7 @@ jobs:
           python3 android/scripts/bundled_model.py verify-apk "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > "$RUNNER_TEMP/app-badging.txt"
-          grep -F "name='app.frankesso.android' versionCode='6' versionName='2.0.0-dev-bundled-preview.6'" "$RUNNER_TEMP/app-badging.txt"
+          grep -F "name='app.frankesso.android' versionCode='7' versionName='2.0.0-dev-bundled-preview.7'" "$RUNNER_TEMP/app-badging.txt"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | tee "$RUNNER_TEMP/app-permissions.txt"
           if grep -q "uses-permission" "$RUNNER_TEMP/app-permissions.txt"; then
             echo "The Android app must not request permissions."

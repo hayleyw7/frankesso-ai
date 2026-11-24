@@ -109,14 +109,18 @@ public final class AndroidHostChecks {
                 ChatPrompt.capabilityReply("are you able to access files on my phone")));
         check(ChatPrompt.capabilityReply("Who are you referring to?") == null);
         check("Which country do you mean?".equals(chat.clarificationReply("Who is the president?")));
-        check(chat.clarificationReply("Who is the president of the USA?") == null);
+        check(chat.clarificationReply("Who is the president of the USA?").startsWith("I can’t verify"));
+        check(chat.clarificationReply("Who is the president of the USA now?").startsWith("I can’t verify"));
+        check(chat.clarificationReply("Who is the president of the USA in 2020?") == null);
+        String reference = "A Norvia government notice dated May 1, 2024 lists Mira Vale as president. Who is president of Norvia now?";
+        check(chat.clarificationReply(reference).equals("The source you supplied lists Mira Vale as president as of May 1, 2024. I can’t verify who currently holds that office offline."));
         check(chat.clarificationReply("Who was the president in 2020?") == null);
         chat.rememberTurn("Let's talk about France.", "OK.");
-        check(chat.clarificationReply("Who is the president?") == null);
+        check(chat.clarificationReply("Who is the president?").startsWith("I can’t verify"));
         chat.clear();
         LocalDateTime early = LocalDateTime.of(2026, 11, 24, 1, 20, 58);
         for (String q : new String[]{"what time is it", "what time is it right now?", "What's the time?",
-                                     "Tell me the time.", "Can you tell me what time it is?"}) {
+                                     "Tell me the time.", "Can you tell me what time it is?", "I want the literal exact time"}) {
             check("The device time is 1:20 AM.".equals(ChatPrompt.deviceClockReply(q, early, false)));
             check("The device time is 01:20.".equals(ChatPrompt.deviceClockReply(q, early, true)));
             check(ChatPrompt.personaReply(q) == null);

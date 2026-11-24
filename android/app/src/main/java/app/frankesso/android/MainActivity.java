@@ -246,7 +246,7 @@ public final class MainActivity extends Activity {
         if (preset != null) {
             append("Frankesso", preset);
             // Keep persona replies out of model context, but preserve a clarification for the follow-up.
-            if (preset.equals("Which country do you mean?")) chat.rememberTurn(input, preset);
+            if (preset.equals(ChatPrompt.COUNTRY_CLARIFICATION)) chat.rememberTurn(input, preset);
             status.setText("Ready.");
             return;
         }

@@ -16,6 +16,7 @@ public final class NativePromptRegression {
             report("identity", ChatPrompt.capabilityReply("Who are you?"));
             report("file access", ChatPrompt.capabilityReply("Are you able to access files on my phone?"));
             report("device time", ChatPrompt.deviceClockReply("What time is it?", CLOCK, false));
+            report("exact time follow-up", ChatPrompt.deviceClockReply("I want the literal exact time", CLOCK.plusMinutes(1), false));
             report("Jupiter after identity", infer(model, chat, "Tell me two facts about Jupiter."));
             report("specific president without source", infer(model, new ChatPrompt(), "Who is the president of the USA?"));
             report("president with dated source", infer(model, new ChatPrompt(),
@@ -27,7 +28,8 @@ public final class NativePromptRegression {
     }
 
     private static String infer(NativeModel model, ChatPrompt chat, String input) throws Exception {
-        return model.reply(chat.format(input, CLOCK, false), new AtomicBoolean(), partial -> { });
+        String direct = chat.clarificationReply(input);
+        return direct != null ? direct : model.reply(chat.format(input, CLOCK, false), new AtomicBoolean(), partial -> { });
     }
 
     private static void report(String name, String text) {
