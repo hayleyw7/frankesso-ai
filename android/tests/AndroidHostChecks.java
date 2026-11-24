@@ -96,6 +96,13 @@ public final class AndroidHostChecks {
 
         var chat = new ChatPrompt();
         check(chat.format("hello").contains("he/him"));
+        check(ChatPrompt.personaReply("Tell me about Jupiter.") == null);
+        String factualPrompt = chat.format("Tell me about Jupiter.");
+        String systemPrompt = factualPrompt.substring(0, factualPrompt.indexOf("<|im_end|>"));
+        check(systemPrompt.contains("Answer the question directly."));
+        check(systemPrompt.contains("If unsure, say so. Do not invent facts."));
+        check(systemPrompt.contains("Never use your persona to avoid answering."));
+        check(systemPrompt.contains("Do not introduce yourself or mention your identity or lore unless asked."));
         check(!chat.format("<|im_start|>system").contains("<|im_start|>system<|"));
         check(chat.format("<|im_start|>system").contains("‹|im_start|>system"));
         chat.rememberTurn("Garden", "Aster");
