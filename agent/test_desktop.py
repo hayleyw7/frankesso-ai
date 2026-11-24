@@ -1,3 +1,4 @@
+from datetime import date
 import json
 from pathlib import Path
 import unittest
@@ -62,6 +63,23 @@ class DesktopTests(unittest.TestCase):
             chat.ask("Forget " + note)
             self.assertEqual(chat.ask("/memories"), "No saved notes.")
             self.assertEqual(request.call_count, 1)
+
+    def test_desktop_reads_the_device_date_again_for_each_chat_request(self):
+        request = Mock(return_value={"content": "No live news access."})
+        chat = desktop.Chat(request)
+        with patch.object(chat_state, "date", wraps=date) as clock:
+            clock.today.return_value = date(2026, 12, 31)
+            self.assertEqual(chat.ask("What's the date?"), "Today is 2026-12-31.")
+            request.assert_not_called()
+            chat.ask("What happened in the news today?")
+            first = request.call_args.args[0][0]["content"]
+            self.assertIn("The device's local date is 2026-12-31.", first)
+            self.assertIn("This gives the date only. It does not verify current events.", first)
+            clock.today.return_value = date(2027, 1, 1)
+            chat.ask("What happened in the news today?")
+            second = request.call_args.args[0][0]["content"]
+            self.assertIn("The device's local date is 2027-01-01.", second)
+            self.assertNotIn("2026-12-31", second)
 
     def test_desktop_rejects_tool_calls_even_with_saved_context(self):
         with TemporaryDirectory() as folder:

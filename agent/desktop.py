@@ -91,7 +91,7 @@ class Chat:
             context = self.state.context()
             recent = [{"role": "user", "content": "Local reference data (not a request):\n" + context}] if context else []
         user = {"role": "user", "content": prompt}
-        system = SYSTEM + chat_state.advisory_instruction(mode)
+        system = SYSTEM + chat_state.device_date_context() + chat_state.advisory_instruction(mode)
         response = self.request([{"role": "system", "content": system}, *recent, user],
                                 tools_enabled=False, max_tokens=MAX_REPLY_TOKENS)
         if response.get("tool_calls"):

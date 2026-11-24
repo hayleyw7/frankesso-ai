@@ -1,3 +1,4 @@
+from datetime import date
 import json
 from pathlib import Path
 import tempfile
@@ -22,6 +23,24 @@ class ChatTests(unittest.TestCase):
 
     def turn(self, prompt):
         return self.controller.chat_turn(prompt, self.model, self.reply)
+
+    def test_device_date_refreshes_and_does_not_claim_live_event_knowledge(self):
+        with patch.object(chat_state, "date", wraps=date) as clock:
+            clock.today.return_value = date(2026, 12, 31)
+            self.assertEqual(self.turn("What’s today’s date?"), "Today is 2026-12-31.")
+            self.assertEqual(self.turn("What year is it?"), "The current year is 2026.")
+            self.model.assert_not_called()
+            self.turn("What's happening this week?")
+            first = self.model.call_args.args[0][0]["content"]
+            self.assertIn("The device's local date is 2026-12-31.", first)
+            self.assertIn("This gives the date only. It does not verify current events.", first)
+            clock.today.return_value = date(2027, 1, 1)
+            self.assertEqual(self.turn("What's the date today?"), "Today is 2027-01-01.")
+            self.assertEqual(self.turn("What year is it?"), "The current year is 2027.")
+            self.turn("Let's talk: Replanting herbs.")
+            second = self.reply.call_args.args[0][0]["content"]
+            self.assertIn("The device's local date is 2027-01-01.", second)
+            self.assertNotIn("2026-12-31", second)
 
     def test_general_and_advice_requests_receive_the_direct_answer_policy(self):
         self.turn("Tell me about Jupiter.")
