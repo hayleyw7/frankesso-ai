@@ -1,7 +1,7 @@
 # Frankesso
 <img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
 
-Frankesso v2 is a local assistant with no online mode. The Windows desktop and terminal use an on-device model, and Android includes its model in the app. No web search, telemetry, cloud fallback, or in-app model download is available.
+Frankesso v2 is **offline-only** on Windows desktop, Windows terminal, and Android. Chats run on your device, with no web search, telemetry, cloud fallback, or in-app model downloads.
 
 Frankesso supports bounded local text search, text edits with previews and backups, and document text extraction. Every file edit requires explicit approval. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
