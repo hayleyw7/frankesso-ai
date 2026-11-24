@@ -2,7 +2,7 @@
 
 The [MIT license](LICENSE) covers Frankesso's original source code and documentation. It does not relicense separately installed models, runtimes, libraries, private skills, or user data.
 
-Frankesso does not bundle or download the following components. Obtain them separately and retain the licenses and notices supplied with the exact distributions you use.
+The desktop installer includes a private CPython 3.13.16 distribution (including Tcl/Tk and its supplied notices) and a statically linked CPU-only build of llama.cpp b11865. Their upstream licenses are included under the installed licenses directory. The installer bundles the original official Qwen3-4B Q4_K_M GGUF and its Apache-2.0 license. First launch uses the copy installed with the app. The source-only CLI continues to work with separately installed components. Optional pypdf and Pillow packages are not bundled.
 
 | Component | Use | Upstream license |
 | --- | --- | --- |

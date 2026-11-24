@@ -1,0 +1,67 @@
+name: Windows installer
+on:
+  pull_request:
+    paths:
+      - 'agent/**'
+      - 'installer/**'
+      - 'assets/**'
+      - '.github/workflows/windows-installer.yml'
+  workflow_dispatch:
+    inputs:
+      full_model_smoke:
+        description: Download the pinned 2.5 GB model and verify inference on the installed app
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Build Windows x64 setup
+        shell: pwsh
+        run: ./installer/build-windows.ps1
+      - name: Run the unit tests with the bundled Windows interpreter
+        shell: pwsh
+        run: |
+          Push-Location agent
+          try { & ../installer/build/payload/python/python.exe -E -s -B -m unittest discover -v }
+          finally { Pop-Location }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: unsigned-windows-installer
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  clean-install:
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: unsigned-windows-installer
+          path: dist
+      - name: Install, inspect shortcut, start the app, and uninstall
+        shell: pwsh
+        env:
+          FULL_MODEL_SMOKE: ${{ (inputs.full_model_smoke || github.base_ref == 'release/v2') && '1' || '0' }}
+        run: ./installer/smoke-windows.ps1
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: windows-button-smoke
+          path: ${{ runner.temp }}/frankesso-button-smoke/*.png
+          if-no-files-found: ignore
+          retention-days: 7

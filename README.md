@@ -1,20 +1,28 @@
 # Frankesso
 <img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
 
-An offline-first Windows command-line assistant for an existing llama.cpp and Qwen3-4B setup, with explicit approval for every file edit and web search. It runs the model locally and uses no paid model API.
+Frankesso v2 is **offline-only** on Windows desktop, Windows terminal, and Android. Chats run on your device, with no web search, telemetry, cloud fallback, or in-app model downloads.
 
-Frankesso supports bounded local text search, text edits with previews and backups, document text extraction, and one-at-a-time approved web searches. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
+Frankesso supports bounded local text search, text edits with previews and backups, and document text extraction. Every file edit requires explicit approval. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
 ## Platform roadmap
 
 - **Available now:** Windows.
 - **Planned:** Linux, Android, macOS, and iOS.
 
-## Start locally
+## Windows desktop app
+
+Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, extract the complete Windows package, keep its `.bin` data files beside `Frankesso-2.0.0-Windows-x64-Setup.exe`, and run Setup. Setup is for the current Windows user and includes Python, Tk, the CPU model runner, and Qwen3-4B (about 2.5 GB). No admin access, Git, separate Python, or terminal setup is required. The installer requires an AVX2-capable x64 processor. Native ARM64 and 32-bit Windows are not supported.
+
+The bundled **Qwen3-4B (Q4_K_M)** was [released April 29, 2025](https://qwenlm.github.io/blog/qwen3/). Its training-data cutoff is not confirmed.
+
+Open **Frankesso** from Start. It verifies and opens the model installed with the app. There is no separate model download, import, or account setup. Desktop chat is text-only. The separate CLI retains approved local file tools. Uninstalling removes the desktop app, Start shortcut, and bundled model without touching separate CLI files.
+
+## Developer setup and command-line tools
 
 1. Keep the repository's folder structure intact. You need an existing runtime folder containing `runner/llama-server.exe` and `models/Qwen3-4B-Q4_K_M.gguf`, plus a local Python interpreter. No runner, model, package, or driver is downloaded automatically.
 2. For a new installation, copy [agent/access.example.json](agent/access.example.json) to `%LOCALAPPDATA%\Frankesso\access.json`. Set `runtime_root` to the existing runtime folder; an empty value defaults to the repository root. Keep this machine-specific file outside the repository.
-3. Add only the local folders you want Frankesso to access to `approved_local_roots`. Leaving it empty grants only temporary sandbox access. The optional `private_skills_root` points to user-owned local Markdown skills; accessing them disables web search for that session.
+3. Add only the local folders you want Frankesso to access to `approved_local_roots`. Leaving it empty grants only temporary sandbox access. The optional `private_skills_root` points to user-owned local Markdown skills. Sessions accessing those skills are excluded from saved chat history.
 4. Run `Start Frankesso.cmd` from the repository root. Exit with `/quit`.
 
 Existing installations can keep their private configuration and use the same `Start Frankesso.cmd` entry point. A legacy `agent/access.json`, if present, takes precedence over `%LOCALAPPDATA%\Frankesso\access.json`; keep it untracked too.
@@ -22,6 +30,14 @@ Existing installations can keep their private configuration and use the same `St
 The launcher prefers an existing Codex bundled Python and falls back to `python` on PATH. Core tools use Python's standard library; PDF text extraction requires `pypdf`, and image metadata requires Pillow, in the selected interpreter. No dependency installation runs automatically.
 
 The launcher starts a separate CPU-only llama.cpp server on `127.0.0.1:18081` and opens the interactive controller in the current console. It refuses to take over an occupied port and stops only its own server on exit. An existing ordinary chat launcher and port 18080 are unchanged. See the [test evidence](agent/TEST-RESULTS.md) for the runtime version previously verified.
+
+## Local chat history & memory
+
+In desktop chat and the CLI, type `Remember this: I label herb pots in teal.` to save a note. Type `/memories` to see saved notes, and `Forget <note ID or exact text>` to remove one. Frankesso does not save notes automatically. Use `/chats`, `/open <ID>`, `/new`, and `/delete <ID>` to inspect, reopen, start, or delete local chats. Forgetting a note does not erase old chats that mention it; deleting a chat does not remove separate notes.
+
+Use `Let's talk:` to discuss an idea or `Just the diff:` to see a proposed patch without editing a file. The GUI always runs text-only. CLI turns that use tools or follow loading private skills are not recorded.
+
+Chats and notes are ordinary unencrypted files local to this Windows account. Uninstall removes the app and model but keeps separate chat and note data so it stays available for the CLI or a reinstall. To remove it, delete the relevant chats and notes from Frankesso. The local data folder is `%LOCALAPPDATA%\Frankesso\chat-state`.
 
 ## File access and approvals
 
@@ -49,29 +65,21 @@ File searches are bounded to 2,000 entries, a five-second traversal budget, and 
 
 Extraction is bounded and may omit content. It does not render layout or edit binary documents. Office macros, formulas, external relationships, and embedded scripts are not executed. Scanned-PDF/image OCR, speech transcription, video understanding, old `.doc`/`.xls`/`.ppt` formats, encrypted files, and arbitrary binary interpretation are unsupported. PDF and image support depend on the available local libraries; no universal-file support is claimed.
 
-## Web search
-
-With `web_mode` set to `ask_each_request`, the web tool shows the exact query, encoded body, and destination before asking for approval. It sends at most one HTTPS POST to `https://html.duckduckgo.com/html/`. Denial occurs before DNS or connection creation. There are no cookies, environment proxies, redirects, retries, browser scripts, or source-page fetches. `mock` mode remains available for tests.
-
-The request exposes the query, standard HTTPS headers, and the requesting computer's public IP. No files or chat history are attached, but the query itself can contain private information: inspect the exact preview before approving. Returned titles and links are untrusted data. Search failure leaves local tools usable.
-
-Live search was verified on 2026-10-28 with one explicitly approved request for `Python official documentation`, returning five titles and links. No source pages were fetched. See the [approved live-search test](agent/WEB-TEST-REQUEST.md). That approval is consumed; every future search requires its own approval. The provider can return a challenge or change its HTML format, and no alternate destination is silently tried.
-
 ## Private local skills
 
 Set `private_skills_root` in the untracked access file to a user-owned local Markdown skills folder. `list_skills` lists Markdown paths and `load_skill` reads one selected file locally. Reference Markdown files can be selected in the same way. The active file is reread on later user turns, so user edits are picked up without copying private contents into source.
 
 One new file can load per turn, with a 6,000-byte limit to keep the 4096-token model context manageable. Only one selected file remains active across turns, not the whole repository. Skill text does not install hooks, execute scripts, create tools, or grant permissions.
 
-Once a session lists, loads, or otherwise accesses the configured private skills tree, the controller blocks all web searches for that session before asking for approval or opening a connection. A file search covering that tree also marks the session private. Start a fresh session without accessing private skills to use web search again. This is deliberate: reviewing a generated search query alone cannot guarantee that private preferences were not paraphrased into it. Local model behavior is still fallible; successful loading does not guarantee every preference will be followed.
+Sessions that access the private skills tree are excluded from saved chat context. A file search covering that tree also marks the session private.
 
 ## Offline behavior and limitations
 
-The model connection uses a fixed numeric loopback address without proxies or redirect following. The launcher strips inherited `LLAMA_ARG_*` variables and uses `--offline --no-agent --no-ui-mcp-proxy --no-ui`; model-provided tool calls are interpreted by this controller, not executed by llama.cpp's built-in tools.
+The Windows controller allows Python socket operations only for its same-device model at `127.0.0.1:18081`. It does not use proxies, DNS hostnames, or redirects. The runner binds to loopback with `--offline --no-agent --no-ui-mcp-proxy --no-ui`, and the launcher strips inherited `LLAMA_ARG_*` settings. Windows file tools and bundled-model startup reject UNC paths, mapped network drives, and reparse points.
 
-The 4B model can make mistakes; malformed tool calls and unknown tools are rejected. Each prompt is a fresh model conversation, with the selected private skill reloaded when applicable. There is no durable conversational memory. File backups persist, but temporary session files are deleted on exit.
+The 4B model can make mistakes; malformed tool calls and unknown tools are rejected. Only the current request can authorize tool planning. Saved chat context is available solely for text-only replies. The CLI reloads a selected private skill when applicable. File backups persist, but temporary session files are deleted on exit.
 
-This is a capability-restricted controller, not an OS security boundary against malicious concurrent local processes. Do not expose its model port to a network or add unrestricted execution tools. Recorded runtime tests restricted controller socket connections to localhost; the PC's physical internet connection was not disabled. The server's offline mode is used, rather than a system firewall rule.
+The Windows restriction is enforced within the application, not by a system firewall. It does not isolate a modified native runner, unrelated apps, or the operating system. Do not expose the model port to a network. The Android package has no internet permission and the build rejects any requested permissions.
 
 ## Tests
 
@@ -79,10 +87,12 @@ Run these commands on Windows, from the repository root:
 
 ```cmd
 cd agent
-python -B -m unittest -v test_agent test_web_search test_documents test_private_skills
+python -B -m unittest -v test_agent test_local_only test_documents test_private_skills test_desktop test_model_setup test_chat_state
 ```
 
 The suite exercises permissions, real-broker denial without networking, fake HTTP responses, bounded parsers, private-skill isolation, and synthetic fixtures. Use the existing bundled Python, or another interpreter with `pypdf` and Pillow, to include PDF and image tests; those tests skip when the libraries are unavailable. The absolute-path permission test targets Windows path semantics, not POSIX paths.
+
+The [Windows installer workflow](.github/workflows/windows-installer.yml) builds an unsigned test artifact and runs install/Start shortcut/uninstall checks in a separate Windows runner. The full-model check verifies the installed model and runs on-device inference without a manual setup step. See [installer verification](installer/README.md) for the Windows release gate. A source checkout can still launch the developer desktop preview using `Install Frankesso Desktop.cmd` after setting up a local Python with Tkinter and the runtime; that's not the v2 installer.
 
 From the same `agent` directory, run the actual-model integration test with the path to your existing runtime folder:
 
@@ -90,7 +100,7 @@ From the same `agent` directory, run the actual-model integration test with the 
 python -B integration_test.py "C:\path\to\LocalAI"
 ```
 
-It launches the existing model and verifies text/document reads, denied writes, and denied real-broker web calls with temporary fixtures. It terminates only the server it started. Controller sockets are restricted to localhost during this test. The placeholder path above must be replaced with your runtime folder.
+It launches the existing model and verifies text/document reads, denied writes, and rejection of the removed web tool with temporary fixtures. It terminates only the server it started. Controller sockets are restricted to localhost during this test. The placeholder path above must be replaced with your runtime folder.
 
 See [test evidence](agent/TEST-RESULTS.md) for the recorded results and verification limits, and the [live-search request record](agent/WEB-TEST-REQUEST.md) for the separately approved network test.
 

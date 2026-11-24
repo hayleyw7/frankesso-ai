@@ -2,6 +2,5 @@
   "private_skills_root": null,
   "runtime_root": "",
   "approved_local_roots": [],
-  "write_policy": "approve_each_change",
-  "web_mode": "ask_each_request"
+  "write_policy": "approve_each_change"
 }

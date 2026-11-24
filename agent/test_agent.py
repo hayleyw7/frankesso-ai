@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -16,14 +17,10 @@ class Tests(unittest.TestCase):
         self.file.write_text("apricot 527\n", encoding="utf-8", newline="")
         self.decisions = []
         self.prompts = []
-        self.web_calls = []
         def approval(action, details):
             self.prompts.append((action, details))
             return self.decisions.pop(0)
-        def broker(query):
-            self.web_calls.append(query)
-            return {"simulation": True}
-        self.controller = agent.Controller(self.root, approval, broker)
+        self.controller = agent.Controller(self.root, approval)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -43,12 +40,18 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.file.read_text(), "new")
         self.assertEqual(len(self.prompts), 2)
 
-    def test_web_requires_approval_every_time(self):
-        self.decisions = [False, True, False]
-        for _ in range(3):
-            self.controller.execute("web_search", {"query": "test only"})
-        self.assertEqual(self.web_calls, ["test only"])
-        self.assertEqual(len(self.prompts), 3)
+    def test_web_is_absent_and_fabricated_calls_do_not_prompt(self):
+        self.assertNotIn("web_search", [tool["function"]["name"] for tool in agent.TOOLS])
+        self.assertIn("Unknown tool", self.controller.execute("web_search", {"query": "test"})["error"])
+        calls = [{"id": "fake", "type": "function",
+                  "function": {"name": "web_search", "arguments": '{"query": "example.invalid"}'}}]
+        def request(messages):
+            if len(messages) == 2:
+                return {"tool_calls": calls}
+            self.assertIn("Unknown tool", messages[-1]["content"])
+            return {"content": "No web access."}
+        self.assertEqual(self.controller.turn("Search the web", request), "No web access.")
+        self.assertEqual(self.prompts, [])
 
     def test_path_escape_and_devices(self):
         for path in ["../outside", "..\\outside", "C:\\Windows\\win.ini", "\\\\host\\share", "note.txt:stream", "NUL", "CON.txt", "foo.", "foo "]:
@@ -57,17 +60,34 @@ class Tests(unittest.TestCase):
 
     def test_reparse_rejected(self):
         real = Path.lstat
+        # The Windows sandbox canonicalizes temp-directory short aliases.
+        target = self.file.resolve()
         def altered(path):
-            if path == self.file:
+            if path == target:
                 return type("Info", (), {"st_mode": 0o100644, "st_file_attributes": 0x400})()
             return real(path)
         with patch.object(Path, "lstat", altered):
             self.assertIn("error", self.controller.execute("read_file", {"path": "note.txt"}))
 
+    def test_junction_rejected_before_target_or_child_is_probed(self):
+        junction = self.controller.root / "remote"
+        real = Path.lstat
+        def lstat(path):
+            if path == junction:
+                return type("Info", (), {"st_mode": 0o040000, "st_file_attributes": 0x400})()
+            self.assertNotIn(junction, path.parents)
+            return real(path)
+        with patch.object(Path, "lstat", lstat), patch.object(
+            Path, "exists", side_effect=AssertionError("exists would follow the junction")
+        ):
+            result = self.controller.execute("read_file", {"path": "remote/seeds.txt"})
+        self.assertIn("reparse points", result["error"])
+
     def test_unknown_tools_and_arguments(self):
         for name, args in [("exec_shell_command", {"command": "curl example.com"}), ("read_file", {"path": "note.txt", "approved": True}), ("web_search", {"query": 1})]:
             self.assertIn("error", self.controller.execute(name, args))
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows absolute drive paths")
     def test_explicit_local_root_and_approved_edit(self):
         with tempfile.TemporaryDirectory(prefix="agent-approved-test-") as approved:
             target = Path(approved) / "fixture.txt"
