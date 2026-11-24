@@ -25,17 +25,21 @@ class ChatTests(unittest.TestCase):
         return self.controller.chat_turn(prompt, self.model, self.reply)
 
     def test_device_clock_refreshes_and_does_not_claim_live_event_knowledge(self):
-        with patch.object(chat_state, "datetime", wraps=datetime) as clock:
+        with (patch.object(chat_state, "datetime", wraps=datetime) as clock,
+              patch.object(chat_state, "_preferred_24_hour", return_value=False) as preferred):
             clock.now.return_value = datetime(2026, 12, 31, 0, 43, 59)
             self.assertEqual(self.turn("What’s today’s date?"), "Today is December 31, 2026.")
-            self.assertEqual(self.turn("What time is it right now?"), "The device time is 12:43 AM (00:43).")
+            self.assertEqual(self.turn("What time is it right now?"), "The device time is 12:43 AM.")
+            preferred.return_value = True
+            self.assertEqual(self.turn("What time is it?"), "The device time is 00:43.")
+            preferred.return_value = False
             self.assertEqual(self.turn("What year is it?"), "The current year is 2026.")
             self.assertEqual(self.turn("What city am I in?"), "I do not have access to your location.")
             self.model.assert_not_called()
             self.turn("What's happening this week?")
             first = self.model.call_args.args[0][0]["content"]
             self.assertIn("The device's local date is December 31, 2026.", first)
-            self.assertIn("Its local time is 12:43 AM (00:43).", first)
+            self.assertIn("Its local time is 12:43 AM.", first)
             self.assertIn("The device clock and model or app release dates are not knowledge dates.", first)
             self.assertIn("A scheduled date does not establish who serves now.", first)
             self.assertIn("Do not claim firsthand experience or mention your identity.", first)
@@ -44,7 +48,7 @@ class ChatTests(unittest.TestCase):
             self.assertEqual(self.model.call_args.args[0][-1]["content"], "What does a roller coaster feel like?")
             clock.now.return_value = datetime(2027, 1, 1, 12, 0, 59)
             self.assertEqual(self.turn("What's the date today?"), "Today is January 1, 2027.")
-            self.assertEqual(self.turn("What time exactly?"), "The device time is 12:00 PM (12:00).")
+            self.assertEqual(self.turn("What time exactly?"), "The device time is 12:00 PM.")
             self.assertEqual(self.turn("What year is it?"), "The current year is 2027.")
             self.turn("Let's talk: Replanting herbs.")
             second = self.reply.call_args.args[0][0]["content"]

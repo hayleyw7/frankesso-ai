@@ -1,9 +1,11 @@
 """Explicitly local chat history and manually saved notes. No model tools."""
 from datetime import datetime
 import json
+import locale
 import os
 from pathlib import Path
 import re
+import sys
 import tempfile
 import uuid
 
@@ -231,9 +233,78 @@ def _long_date(local):
     return f"{_MONTHS[local.month - 1]} {local.day}, {local.year}"
 
 
+def _apple_uses_24_hour():
+    import ctypes as c
+
+    cf = c.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+    signatures = (
+        ("CFLocaleCopyCurrent", (), c.c_void_p),
+        ("CFDateFormatterCreate", (c.c_void_p, c.c_void_p, c.c_long, c.c_long), c.c_void_p),
+        ("CFDateFormatterGetFormat", (c.c_void_p,), c.c_void_p),
+        ("CFStringGetCString", (c.c_void_p, c.c_char_p, c.c_long, c.c_uint32), c.c_bool),
+        ("CFRelease", (c.c_void_p,), None),
+    )
+    for name, arguments, result in signatures:
+        function = getattr(cf, name)
+        function.argtypes, function.restype = arguments, result
+    user_locale = cf.CFLocaleCopyCurrent()
+    if not user_locale:
+        return None
+    try:
+        # Date style none (0), time style short (1), including the effective user locale.
+        formatter = cf.CFDateFormatterCreate(None, user_locale, 0, 1)
+        if not formatter:
+            return None
+        try:
+            raw = c.create_string_buffer(256)
+            if not cf.CFStringGetCString(cf.CFDateFormatterGetFormat(formatter), raw, len(raw), 0x08000100):
+                return None
+            pattern = re.sub(r"'[^']*'", "", raw.value.decode("utf-8"))
+            if "H" in pattern or "k" in pattern:
+                return True
+            if "h" in pattern or "K" in pattern:
+                return False
+        finally:
+            cf.CFRelease(formatter)
+    finally:
+        cf.CFRelease(user_locale)
+    return None
+
+
+def _preferred_24_hour():
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            # LOCALE_ITIME from winnls.h. A null locale name selects current user settings.
+            get_locale = ctypes.windll.kernel32.GetLocaleInfoEx
+            get_locale.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.LPWSTR, ctypes.c_int]
+            get_locale.restype = ctypes.c_int
+            mode = ctypes.create_unicode_buffer(2)
+            if get_locale(None, 0x23, mode, len(mode)) and mode.value in {"0", "1"}:
+                return mode.value == "1"
+        except (AttributeError, OSError):
+            pass
+    if sys.platform == "darwin":
+        try:
+            use_24_hour = _apple_uses_24_hour()
+            if use_24_hour is not None:
+                return use_24_hour
+        except (AttributeError, OSError, UnicodeError):
+            pass
+    try:
+        pattern = locale.nl_langinfo(locale.T_FMT)
+        return not any(mark in pattern for mark in ("%I", "%l", "%p", "%r"))
+    except (AttributeError, ValueError):
+        return False
+
+
 def _clock_time(local):
+    if _preferred_24_hour():
+        return f"{local.hour:02d}:{local.minute:02d}"
     period = "AM" if local.hour < 12 else "PM"
-    return f"{local.hour % 12 or 12}:{local.minute:02d} {period} ({local.hour:02d}:{local.minute:02d})"
+    return f"{local.hour % 12 or 12}:{local.minute:02d} {period}"
 
 
 def device_date_context():
@@ -244,7 +315,7 @@ def device_date_context():
         "Distinguish an office from its holder. You may state scheduled term dates if supported by a reliable source or a known fixed rule. A scheduled date does not establish who serves now. Do not invent an officeholder, term date, source, cutoff, or last update. The device clock and model or app release dates are not knowledge dates. "
         "Without a reliable dated source, say you cannot verify time-sensitive facts. Use only a location the user provided. If asked for their location and it is unknown, say: I do not have access to your location. Never look up or infer live weather. "
         "In generic questions such as “What does X feel like?”, “you” means people in general. Describe commonly reported experiences and any variation or uncertainty. Do not claim firsthand experience or mention your identity. "
-        "Give exact local time to the minute without rounding, AM/PM first and 24-hour time in parentheses. Spell dates Month D, YYYY. Default to US customary units first with metric in parentheses: 6 ft (1.83 m), 68°F (20°C). Use requested units and preserve source units for safety-critical quantities. Do not invent precision. "
+        "Give exact local time to the minute without rounding in the device's preferred 12- or 24-hour format. Show just one format. Spell dates Month D, YYYY. Default to US customary units first with metric in parentheses: 6 ft (1.83 m), 68°F (20°C). Use requested units and preserve source units for safety-critical quantities. Do not invent precision. "
     )
 
 
