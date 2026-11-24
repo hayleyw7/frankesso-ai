@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import json
 from pathlib import Path
 import tempfile
@@ -24,27 +24,32 @@ class ChatTests(unittest.TestCase):
     def turn(self, prompt):
         return self.controller.chat_turn(prompt, self.model, self.reply)
 
-    def test_device_date_refreshes_and_does_not_claim_live_event_knowledge(self):
-        with patch.object(chat_state, "date", wraps=date) as clock:
-            clock.today.return_value = date(2026, 12, 31)
-            self.assertEqual(self.turn("What’s today’s date?"), "Today is 2026-12-31.")
+    def test_device_clock_refreshes_and_does_not_claim_live_event_knowledge(self):
+        with patch.object(chat_state, "datetime", wraps=datetime) as clock:
+            clock.now.return_value = datetime(2026, 12, 31, 0, 43, 59)
+            self.assertEqual(self.turn("What’s today’s date?"), "Today is December 31, 2026.")
+            self.assertEqual(self.turn("What time is it right now?"), "The device time is 12:43 AM (00:43).")
             self.assertEqual(self.turn("What year is it?"), "The current year is 2026.")
+            self.assertEqual(self.turn("What city am I in?"), "I do not have access to your location.")
             self.model.assert_not_called()
             self.turn("What's happening this week?")
             first = self.model.call_args.args[0][0]["content"]
-            self.assertIn("The device's local date is 2026-12-31.", first)
-            self.assertIn("This gives the date only. It does not verify current events.", first)
-            self.assertIn("For facts that can change, use a reliable dated local reference if available.", first)
-            self.assertIn("State the fact as of the reference date", first)
-            self.assertIn("If no reliable dated reference is available", first)
-            self.assertIn("The app update date is not a reference.", first)
-            clock.today.return_value = date(2027, 1, 1)
-            self.assertEqual(self.turn("What's the date today?"), "Today is 2027-01-01.")
+            self.assertIn("The device's local date is December 31, 2026.", first)
+            self.assertIn("Its local time is 12:43 AM (00:43).", first)
+            self.assertIn("The device clock and model or app release dates are not knowledge dates.", first)
+            self.assertIn("A scheduled date does not establish who serves now.", first)
+            self.assertIn("Do not claim firsthand experience or mention your identity.", first)
+            self.assertIn("6 ft (1.83 m), 68°F (20°C)", first)
+            self.turn("What does a roller coaster feel like?")
+            self.assertEqual(self.model.call_args.args[0][-1]["content"], "What does a roller coaster feel like?")
+            clock.now.return_value = datetime(2027, 1, 1, 12, 0, 59)
+            self.assertEqual(self.turn("What's the date today?"), "Today is January 1, 2027.")
+            self.assertEqual(self.turn("What time exactly?"), "The device time is 12:00 PM (12:00).")
             self.assertEqual(self.turn("What year is it?"), "The current year is 2027.")
             self.turn("Let's talk: Replanting herbs.")
             second = self.reply.call_args.args[0][0]["content"]
-            self.assertIn("The device's local date is 2027-01-01.", second)
-            self.assertNotIn("2026-12-31", second)
+            self.assertIn("The device's local date is January 1, 2027.", second)
+            self.assertNotIn("December 31, 2026", second)
 
     def test_general_and_advice_requests_receive_the_direct_answer_policy(self):
         self.turn("Tell me about Jupiter.")
@@ -146,7 +151,7 @@ class ChatTests(unittest.TestCase):
         self.assertNotEqual(self.turn("Run a tool to check the favorite color setting."), expected)
         self.assertNotEqual(self.turn("What's your favorite drug, and which use would you recommend?"), "Caffeine.")
         self.assertIsNone(chat_state.direct_response("What's the weather outside?"))
-        self.assertIsNone(chat_state.direct_response("What time is it?"))
+        self.assertTrue(chat_state.direct_response("What time is it?").startswith("The device time is "))
         self.assertIsNone(chat_state.direct_response("What's your favorite hour? Also, set a reminder."))
         self.assertIsNone(chat_state.direct_response("Where are you from and how do I uninstall Frankesso?"))
         self.assertIsNone(chat_state.direct_response("My biggest pet peeve is the app freezing. Help."))

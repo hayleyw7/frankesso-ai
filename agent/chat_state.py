@@ -1,5 +1,5 @@
 """Explicitly local chat history and manually saved notes. No model tools."""
-from datetime import date
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -197,29 +197,76 @@ FAVORITE_QUESTION = re.compile(
 PET_PEEVE_QUESTION = re.compile(r"(?:what(?:['’]s| is) your )?(?:biggest )?pet peeve")
 
 
+_MONTHS = (
+    "January", "February", "March", "April", "May", "June", "July", "August",
+    "September", "October", "November", "December",
+)
+_DATE_QUESTIONS = {
+    "what is today's date", "what's today's date", "what is the date", "what's the date",
+    "what is the date today", "what's the date today", "what day is it",
+    "what day is it today", "today's date", "what is today",
+}
+_YEAR_QUESTIONS = {
+    "what year is it", "what is the current year", "what's the current year", "current year",
+}
+_TIME_QUESTIONS = {
+    "what time is it", "what is the time", "what's the time", "what time exactly",
+    "what time is it exactly", "what is the current time", "what's the current time",
+    "current time", "what time is it now", "tell me the time", "tell me the current time",
+}
+_DATE_AND_TIME_QUESTIONS = {
+    "what is the date and time", "what's the date and time",
+    "what is the current date and time", "what's the current date and time",
+    "what are the date and time", "date and time", "current date and time",
+}
+_LOCATION_QUESTIONS = {
+    "where am i", "what city am i in", "what is my current city", "what's my current city",
+    "what is my location", "what's my location", "what is my current location",
+    "what's my current location", "what town am i in", "what country am i in",
+    "what state am i in", "which city am i in", "can you tell where i am",
+}
+
+
+def _long_date(local):
+    return f"{_MONTHS[local.month - 1]} {local.day}, {local.year}"
+
+
+def _clock_time(local):
+    period = "AM" if local.hour < 12 else "PM"
+    return f"{local.hour % 12 or 12}:{local.minute:02d} {period} ({local.hour:02d}:{local.minute:02d})"
+
+
 def device_date_context():
+    local = datetime.now()
     return (
-        f"\nThe device's local date is {date.today().isoformat()}. This gives the date only. It does not verify current events. "
-        "For facts that can change, use a reliable dated local reference if available. "
-        "State the fact as of the reference date, separate from the device date, and say you cannot verify that it is still current. "
-        "If no reliable dated reference is available, say you cannot verify. Do not guess or invent a source or date. "
-        "The app update date is not a reference."
+        f"\nThe device's local date is {_long_date(local)}. Its local time is {_clock_time(local)}. "
+        "For facts that can change, use a reliable dated local source if available. State the fact as of that date using past tense or “the source lists.” Separately give the device date and say you cannot verify current status. "
+        "Distinguish an office from its holder. You may state scheduled term dates if supported by a reliable source or a known fixed rule. A scheduled date does not establish who serves now. Do not invent an officeholder, term date, source, cutoff, or last update. The device clock and model or app release dates are not knowledge dates. "
+        "Without a reliable dated source, say you cannot verify time-sensitive facts. Use only a location the user provided. If asked for their location and it is unknown, say: I do not have access to your location. Never look up or infer live weather. "
+        "In generic questions such as “What does X feel like?”, “you” means people in general. Describe commonly reported experiences and any variation or uncertainty. Do not claim firsthand experience or mention your identity. "
+        "Give exact local time to the minute without rounding, AM/PM first and 24-hour time in parentheses. Spell dates Month D, YYYY. Default to US customary units first with metric in parentheses: 6 ft (1.83 m), 68°F (20°C). Use requested units and preserve source units for safety-critical quantities. Do not invent precision. "
     )
 
 
 def direct_response(prompt):
-    value = " ".join(prompt.casefold().split())
+    value = " ".join(prompt.casefold().replace("’", "'").split())
     if value == "test":
         return TEST_REPLY
     question = value.rstrip("?!.")
-    if question in {"what is today's date", "what's today's date", "what is the date",
-                    "what's the date", "what is the date today", "what's the date today",
-                    "what day is it", "what day is it today", "what is today’s date",
-                    "what’s today’s date", "today's date", "today’s date"}:
-        return f"Today is {date.today().isoformat()}."
-    if question in {"what year is it", "what is the current year",
-                    "what's the current year", "what’s the current year"}:
-        return f"The current year is {date.today().year}."
+    if question.startswith("whats "):
+        question = "what's " + question[6:]
+    current = question.removesuffix(" right now").removesuffix(" currently")
+    if current in _LOCATION_QUESTIONS:
+        return "I do not have access to your location."
+    if current in _DATE_QUESTIONS:
+        return f"Today is {_long_date(datetime.now())}."
+    if current in _YEAR_QUESTIONS:
+        return f"The current year is {datetime.now().year}."
+    if current in _TIME_QUESTIONS:
+        return f"The device time is {_clock_time(datetime.now())}."
+    if current in _DATE_AND_TIME_QUESTIONS:
+        local = datetime.now()
+        return f"Today is {_long_date(local)}. The device time is {_clock_time(local)}."
     if PET_PEEVE_QUESTION.fullmatch(question):
         return "Decaf."
     if question == "where are you from":
