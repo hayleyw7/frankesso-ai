@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import sys
 import uuid
 
 ID = re.compile(r"[0-9a-f]{32}")
@@ -16,6 +17,8 @@ MAX_CONTEXT = 1800
 
 
 def state_root():
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Frankesso" / "chat-state"
     base = os.environ.get("LOCALAPPDATA")
     return Path(base) / "Frankesso" / "chat-state" if base else Path.home() / ".frankesso" / "chat-state"
 

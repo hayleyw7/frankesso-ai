@@ -1,14 +1,15 @@
 # Frankesso
 <img src="assets/frankesso-logo.png" alt="Frankesso AI coffee bunny logo" align="right" width="160">
 
-Frankesso v2 is **offline-only** on Windows desktop, Windows terminal, and Android. Chats run on your device, with no web search, telemetry, cloud fallback, or in-app model downloads.
+Frankesso v2 is **offline-only** on Windows desktop, Windows terminal, Apple Silicon Macs, and Android. Chats run on your device, with no web search, telemetry, cloud fallback, or in-app model downloads.
 
 Frankesso supports bounded local text search, text edits with previews and backups, and document text extraction. Every file edit requires explicit approval. It has no shell, browser automation, arbitrary code execution, or automatic publishing tool.
 
 ## Platform roadmap
 
 - **Available now:** Windows.
-- **Planned:** Linux, Android, macOS, and iOS.
+- **In development:** Windows v2 desktop and Apple Silicon macOS.
+- **Planned:** Linux, Android, and iOS.
 
 ## Windows desktop app
 
@@ -17,6 +18,12 @@ Frankesso v2's Windows x64 installer is in development and not released. Once th
 The bundled **Qwen3-4B (Q4_K_M)** was [released April 29, 2025](https://qwenlm.github.io/blog/qwen3/). Its training-data cutoff is not confirmed.
 
 Open **Frankesso** from Start. It verifies and opens the model installed with the app. There is no separate model download, import, or account setup. Desktop chat is text-only. The separate CLI retains approved local file tools. Uninstalling removes the desktop app, Start shortcut, and bundled model without touching separate CLI files.
+
+## macOS desktop app
+
+The macOS preview matches the Windows desktop chat with the same layout, artwork, system light and dark appearance, chat history, and local date handling. This draft targets Apple Silicon and macOS 13 or later. It has no settings, terminal file tools, model import, or online mode.
+
+The disk image includes the same **Qwen3-4B (Q4_K_M)** and local runner as the Windows desktop. There is no first-run download. Preview builds are ad hoc signed, not notarized or ready for public distribution. See the [Mac preview build and verification](macos/README.md).
 
 ## Developer setup and command-line tools
 
