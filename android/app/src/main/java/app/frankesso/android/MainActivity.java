@@ -26,6 +26,7 @@ import android.widget.TextView;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
@@ -225,9 +226,10 @@ public final class MainActivity extends Activity {
         if (!ready || busy) return;
         String input = composer.getText().toString().trim();
         if (input.isEmpty()) return;
+        LocalDate today = LocalDate.now();
         String prompt;
         try {
-            prompt = chat.format(input);
+            prompt = chat.format(input, today);
         } catch (IllegalArgumentException e) {
             status.setText(e.getMessage());
             return;
@@ -235,7 +237,8 @@ public final class MainActivity extends Activity {
         composer.setText("");
         append("You", input);
         boolean test = "test".equalsIgnoreCase(input);
-        String preset = test ? null : ChatPrompt.personaReply(input);
+        String preset = test ? null : ChatPrompt.deviceDateReply(input, today);
+        if (!test && preset == null) preset = ChatPrompt.personaReply(input);
         if (preset != null) {
             append("Frankesso", preset);
             chat.rememberTurn(input, preset);

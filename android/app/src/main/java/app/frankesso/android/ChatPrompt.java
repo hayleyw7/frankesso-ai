@@ -1,8 +1,10 @@
 package app.frankesso.android;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 final class ChatPrompt {
@@ -54,7 +56,23 @@ final class ChatPrompt {
         return "Coffee.";
     }
 
-    String format(String input) {
+    static String deviceDateReply(String input, LocalDate today) {
+        String question = input.trim().toLowerCase(Locale.ROOT)
+                .replace('’', '\'').replaceAll("\\s+", " ").replaceFirst("[?!.]+$", "");
+        return switch (question) {
+            case "what is today's date", "what's today's date", "what is the date",
+                    "what's the date", "what is the date today", "what's the date today",
+                    "what day is it", "what day is it today", "today's date" ->
+                    "Today is " + today + ".";
+            case "what year is it", "what is the current year", "what's the current year" ->
+                    "The current year is " + today.getYear() + ".";
+            default -> null;
+        };
+    }
+
+    String format(String input) { return format(input, LocalDate.now()); }
+
+    String format(String input, LocalDate today) {
         if (bytes(input) > MAX_INPUT_BYTES) {
             throw new IllegalArgumentException("That message is too long for this small model.");
         }
@@ -66,7 +84,9 @@ final class ChatPrompt {
             if (bytes(candidate) + bytes(user) > MAX_CONTEXT_BYTES) break;
             recent = candidate;
         }
-        return turn("system", PERSONA) + recent + user + suffix;
+        String system = PERSONA + " The device's local date is " + today
+                + ". This gives the date only. It does not verify current events.";
+        return turn("system", system) + recent + user + suffix;
     }
 
     void rememberTurn(String user, String reply) {
