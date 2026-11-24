@@ -4,6 +4,7 @@ set -euo pipefail
 [[ $(uname -s)/$(uname -m) == Darwin/arm64 ]] || { echo "Use an Apple Silicon Mac." >&2; exit 1; }
 root="$(cd "$(dirname "$0")/.." && pwd -P)"
 build="$(mktemp -d)"
+build="$(cd "$build" && pwd -P)"
 trap 'rm -rf "$build"' EXIT
 
 python=${FRANKESSO_BUILD_PYTHON:-/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13}

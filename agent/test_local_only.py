@@ -24,7 +24,7 @@ class LocalOnlyTests(unittest.TestCase):
     def test_socket_guard_blocks_external_attempts_but_allows_actual_model_request(self):
         # A child process is isolated because audit hooks intentionally cannot be removed.
         script = textwrap.dedent("""
-            import agent, http.server, socket, threading
+            import agent, http.server, socket, socketserver, threading
             from local_only import install_socket_guard
 
             class Model(http.server.BaseHTTPRequestHandler):
@@ -35,7 +35,15 @@ class LocalOnlyTests(unittest.TestCase):
                     self.end_headers()
                     self.wfile.write(b'{"choices":[{"message":{"content":"A fern."}}]}')
 
-            with http.server.HTTPServer(('127.0.0.1', 0), Model) as server:
+            class FixtureServer(http.server.HTTPServer):
+                def server_bind(self):
+                    # HTTPServer.server_bind resolves a hostname even for a loopback
+                    # fixture, which can stall on macOS if reverse DNS is unavailable.
+                    socketserver.TCPServer.server_bind(self)
+                    self.server_name, self.server_port = self.server_address[:2]
+
+            with FixtureServer(('127.0.0.1', 0), Model) as server:
+                server.timeout = 3
                 agent.PORT = server.server_port
                 with socket.socket() as s:
                     install_socket_guard(agent.PORT)
@@ -49,7 +57,7 @@ class LocalOnlyTests(unittest.TestCase):
                         except PermissionError:
                             continue
                         raise AssertionError('An external socket attempt reached the OS')
-                thread = threading.Thread(target=server.handle_request)
+                thread = threading.Thread(target=server.handle_request, daemon=True)
                 thread.start()
                 assert agent.model_request([{'role':'user', 'content':'Say a plant.'}]) == {'content':'A fern.'}
                 thread.join(3)

@@ -26,7 +26,10 @@ jobs:
           echo "30666509020b4da0dd8bc2e773255f34d76b7bb80b66960a928d5f6daa0192d7  $file" | shasum -a 256 -c -
           sudo installer -pkg "$file" -target /
       - name: Test shared chat and macOS startup
-        run: cd agent && /Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13 -B -m unittest discover -v
+        run: |
+          export TMPDIR="$(cd "$RUNNER_TEMP" && pwd -P)"
+          cd agent
+          /Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13 -B -m unittest discover -v
       - name: Build Apple Silicon app and smoke-test bundled Qwen
         run: bash macos/build-macos.sh
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
