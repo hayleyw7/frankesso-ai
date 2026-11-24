@@ -1,12 +1,12 @@
 # Frankesso for Android
 
-The Android build is a self-contained, offline, text-only chat app for **64-bit ARM phones with Android 8.0 or newer**. It does not request internet, storage, or device-control permissions. There is no account, cloud model, AndroidHarness, Shizuku, or root requirement.
+Frankesso v2 for Android is **offline-only**. The text chat app runs its bundled model on **64-bit ARM phones with Android 8.0 or newer**. Android blocks the app from opening internet connections because the APK does not request the `INTERNET` permission. No account, separate model download, or root access is required.
 
-## Install, open, and chat offline
+## Install and chat
 
 1. Download and install the APK. It is roughly 500 MB because the model is included. The GitHub Actions test artifact is a direct debug APK download for signed-in GitHub users, not a production distribution.
 2. Open **Frankesso** from the app launcher. On first launch, it prepares and verifies its bundled model automatically, with progress. No model picker, separate download, or import is needed. The initial private model copy needs **at least 525 MB free after installing**; if storage is low, free some space and tap **Retry setup**.
-3. Start chatting when the status says **Ready.** Replies appear as they’re generated. Tap **Stop** to end a reply; a one-minute limit protects against a slow or stalled generation. **New chat** clears the visible transcript and in-memory context. Chats are not synced or saved; the small model can get answers wrong and uses a short context. Desktop file and web tools are not included.
+3. Start chatting when the status says **Ready.** Replies appear as they’re generated. Tap **Stop** to end a reply; a one-minute limit protects against a slow or stalled generation. **New chat** clears the visible transcript and in-memory context. Chats are not synced or saved; the small model can get answers wrong and uses a short context. Desktop file tools are not included.
 
 The workflow skips the Android emulator test when the runner cannot access KVM. A passing build with that warning does not verify launch or chat on Android; use the airplane-mode phone check below.
 
