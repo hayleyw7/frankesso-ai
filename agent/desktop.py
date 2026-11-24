@@ -16,7 +16,8 @@ import model_setup
 from local_only import install_socket_guard
 from run_agent import LocalServer, read_config, runtime_root
 
-ASSETS = Path(__file__).resolve().parent.parent / "assets"
+ASSETS = (Path(sys._MEIPASS) if getattr(sys, "frozen", False)
+          else Path(__file__).resolve().parent.parent) / "assets"
 MAX_PROMPT = 1800
 MAX_CONTEXT = 1800
 MAX_REPLY_TOKENS = 224
@@ -100,9 +101,10 @@ class Chat:
 
 
 class Worker:
-    def __init__(self, installed=False, animate_replies=False):
+    def __init__(self, installed=False, animate_replies=False, package_root=None):
         self.installed = installed
         self.animate_replies = animate_replies
+        self.package_root = package_root
         self.inbox = Queue()
         self.outbox = Queue()
         self.stop = Event()
@@ -115,8 +117,9 @@ class Worker:
             if self.stop.is_set():
                 return
             if self.installed:
-                require_avx2()
-                project = ASSETS.parent
+                if self.package_root is None:
+                    require_avx2()
+                project = self.package_root if self.package_root is not None else ASSETS.parent
                 model = self.bundled_model(project)
             else:
                 project, model = runtime_root(read_config()), None
@@ -157,7 +160,7 @@ class Worker:
         agent.Controller._check_components(model)
         self.outbox.put(("status", "Verifying the bundled model…"))
         if not model_setup.verify(model, self.stop, model_setup.MODEL):
-            raise RuntimeError("The bundled model is missing or damaged. Reinstall Frankesso from the complete Windows package.")
+            raise RuntimeError("The bundled model is missing or damaged. Reinstall Frankesso from the complete package.")
         self.outbox.put(("status", "Starting the local model…"))
         return model
 
@@ -191,7 +194,7 @@ def windows_app_theme():
 
 
 def watch_system_theme(root, initial_mode, render, read_mode=windows_app_theme):
-    """Follow Windows' read-only app theme preference without rebuilding the UI."""
+    """Follow the device's read-only app theme preference without rebuilding the UI."""
     mode = initial_mode
 
     def poll():
@@ -374,17 +377,19 @@ def chat_text_colors(mode="light"):
                 highlightthickness=0, borderwidth=0, relief="flat")
 
 
-def launch(tk, ttk, installed=False):
+def launch(tk, ttk, installed=False, *, package_root=None,
+           read_theme=windows_app_theme, font_family="Segoe UI"):
     root = tk.Tk()
     root.title("Frankesso")
     root.geometry("720x580")
     root.minsize(430, 390)
-    try:
-        root.iconbitmap(default=str(ASSETS / "frankesso.ico"))
-    except tk.TclError:
-        pass
+    if sys.platform == "win32":
+        try:
+            root.iconbitmap(default=str(ASSETS / "frankesso.ico"))
+        except tk.TclError:
+            pass
 
-    mode = windows_app_theme()
+    mode = read_theme()
     apply_chat_theme(root, ttk, mode, tk)
     frame = ttk.Frame(root, padding=18, style="Frankesso.TFrame")
     frame.grid(sticky="nsew")
@@ -400,7 +405,7 @@ def launch(tk, ttk, installed=False):
              for variant in ("light", "dark")}
     brand = ttk.Label(header, style="Frankesso.TLabel", image=logos[mode])
     brand.grid(row=0, column=0, rowspan=2, padx=(0, 12))
-    ttk.Label(header, style="Frankesso.TLabel", text="Frankesso", font=("Segoe UI", 18, "bold")).grid(row=0, column=1, sticky="sw")
+    ttk.Label(header, style="Frankesso.TLabel", text="Frankesso", font=(font_family, 18, "bold")).grid(row=0, column=1, sticky="sw")
     ttk.Label(header, style="Frankesso.TLabel", text="Offline chat").grid(row=1, column=1, sticky="nw")
     status = tk.StringVar(value="Starting the local model…")
     ttk.Label(frame, style="Frankesso.TLabel", textvariable=status).grid(row=1, column=0, pady=(10, 6), sticky="w")
@@ -409,7 +414,7 @@ def launch(tk, ttk, installed=False):
     chat_frame.grid(row=3, column=0, sticky="nsew")
     chat_frame.columnconfigure(0, weight=1)
     chat_frame.rowconfigure(0, weight=1)
-    output = tk.Text(chat_frame, wrap="word", state="disabled", font=("Segoe UI", 11),
+    output = tk.Text(chat_frame, wrap="word", state="disabled", font=(font_family, 11),
                      padx=0, pady=0, height=8, **chat_text_colors(mode))
     output.grid(row=0, column=0, sticky="nsew")
     scroll = ttk.Scrollbar(chat_frame, orient="vertical", command=output.yview, style="Frankesso.Vertical.TScrollbar")
@@ -421,7 +426,7 @@ def launch(tk, ttk, installed=False):
     composer = chat_panel(frame, ttk, input_field=True)
     composer.grid(row=5, column=0, sticky="ew")
     composer.columnconfigure(0, weight=1)
-    entry = tk.Text(composer, wrap="word", height=3, font=("Segoe UI", 11), padx=0, pady=0, **chat_text_colors(mode))
+    entry = tk.Text(composer, wrap="word", height=3, font=(font_family, 11), padx=0, pady=0, **chat_text_colors(mode))
     entry.grid(row=0, column=0, sticky="ew")
     buttons = ttk.Frame(frame, style="Frankesso.TFrame")
     buttons.grid(row=6, column=0, sticky="ew", pady=(8, 0))
@@ -432,7 +437,7 @@ def launch(tk, ttk, installed=False):
         for widget in (output, entry):
             widget.configure(**chat_text_colors(new_mode))
 
-    watch_system_theme(root, mode, render_theme)
+    watch_system_theme(root, mode, render_theme, read_mode=read_theme)
     pending_after = None
 
     def insert_text(text):
@@ -515,7 +520,7 @@ def launch(tk, ttk, installed=False):
     entry.bind("<Return>", send)
     entry.bind("<Shift-Return>", lambda _: None)
     entry.focus_set()
-    worker = Worker(installed=installed, animate_replies=True)
+    worker = Worker(installed=installed, animate_replies=True, package_root=package_root)
 
     def poll():
         try:

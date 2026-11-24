@@ -1,0 +1,41 @@
+name: macOS preview
+on:
+  pull_request:
+    paths:
+      - 'macos/**'
+      - 'agent/macos_desktop.py'
+      - 'agent/test_macos_desktop.py'
+      - '.github/workflows/macos-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned build Python
+        run: |
+          file="$RUNNER_TEMP/python-3.13.16-macos11.pkg"
+          curl -fsSL --retry 3 https://www.python.org/ftp/python/3.13.16/python-3.13.16-macos11.pkg -o "$file"
+          echo "30666509020b4da0dd8bc2e773255f34d76b7bb80b66960a928d5f6daa0192d7  $file" | shasum -a 256 -c -
+          sudo installer -pkg "$file" -target /
+      - name: Test shared chat and macOS startup
+        run: |
+          export TMPDIR="$(cd "$RUNNER_TEMP" && pwd -P)"
+          cd agent
+          /Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13 -B -m unittest discover -v
+      - name: Build Apple Silicon app and smoke-test bundled Qwen
+        run: bash macos/build-macos.sh
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: macos-arm64-preview
+          path: dist/macos/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

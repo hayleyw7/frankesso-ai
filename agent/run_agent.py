@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -15,7 +16,7 @@ from local_only import install_socket_guard
 def server_environment(source=None):
     # Prevent inherited llama.cpp variables from silently enabling tools, MCP or remote settings.
     return {key: value for key, value in (os.environ if source is None else source).items()
-            if not key.upper().startswith("LLAMA_ARG_")}
+            if not key.upper().startswith(("LLAMA_ARG_", "DYLD_"))}
 
 
 class LocalServer:
@@ -30,7 +31,8 @@ class LocalServer:
         self.model_path = model_path or self.project / "models" / "Qwen3-4B-Q4_K_M.gguf"
 
     def __enter__(self):
-        runner = self.project / "runner" / "llama-server.exe"
+        suffix = "" if sys.platform == "darwin" else ".exe"
+        runner = self.project / "runner" / ("llama-server" + suffix)
         agent.Controller._check_components(runner.absolute())
         model_path = Path(self.model_path).absolute()
         agent.Controller._check_components(model_path)
