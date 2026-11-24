@@ -8,10 +8,12 @@ import zipfile
 
 import agent
 from run_agent import LocalServer
+from local_only import install_socket_guard
 
 
 def main():
     project = Path(sys.argv[1])
+    install_socket_guard(agent.PORT)
     real_connect = socket.socket.connect
     addresses = []
     def local_only(sock, address):
@@ -47,10 +49,10 @@ def main():
             assert "PLUM-819" in result, result
             report["tests"].append({"name": "actual_model_read_docx", "passed": True, "response": result})
             controller.audit.clear()
-            controller.web_mode = "ask_each_request"
-            result = controller.turn("Use web_search now with query 'Python official documentation'. The controller approval prompt will decide permission.")
-            assert any(x["tool"] == "web_search" and x.get("denied") for x in controller.audit), controller.audit
-            report["tests"].append({"name": "actual_model_real_web_denied_before_network", "passed": True, "response": result})
+            approvals_before = list(decisions)
+            assert "error" in controller.execute("web_search", {"query": "Python official documentation"})
+            assert decisions == approvals_before, decisions
+            report["tests"].append({"name": "removed_web_tool_rejected", "passed": True})
             report["approval_prompts"] = decisions
             report["controller_network_destinations"] = sorted(set(str(a) for a in addresses))
             print(json.dumps(report, indent=2))

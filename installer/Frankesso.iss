@@ -27,8 +27,12 @@ Name: "{userprograms}\Frankesso"; Filename: "{app}\python\pythonw.exe"; Paramete
 [Run]
 Filename: "{app}\python\pythonw.exe"; Parameters: "-E -s -B ""{app}\agent\desktop.py"" --installed"; WorkingDir: "{app}"; Description: "Open Frankesso"; Flags: nowait postinstall skipifsilent
 
+[InstallDelete]
+Type: files; Name: "{app}\agent\web_search.py"
+
 [UninstallDelete]
 Type: files; Name: "{localappdata}\FrankessoDesktop\models\Qwen3-4B-Q4_K_M.gguf"
 Type: files; Name: "{localappdata}\FrankessoDesktop\models\qwen-download-*.part"
+Type: files; Name: "{localappdata}\FrankessoDesktop\models\qwen-import-*.part"
 Type: dirifempty; Name: "{localappdata}\FrankessoDesktop\models"
 Type: dirifempty; Name: "{localappdata}\FrankessoDesktop"

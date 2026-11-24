@@ -14,6 +14,18 @@ $model = Join-Path $env:LOCALAPPDATA 'FrankessoDesktop/models/Qwen3-4B-Q4_K_M.gg
 if ((Test-Path $app) -or (Test-Path $shortcutPath) -or (Test-Path $model)) {
     throw 'Expected a clean Windows user profile.'
 }
+# Acquisition is outside the installed app. The app imports a local file.
+if ($env:FULL_MODEL_SMOKE -eq '1') {
+    $env:FRANKESSO_SMOKE_MODEL = Join-Path $env:RUNNER_TEMP 'Qwen3-4B-Q4_K_M.gguf'
+    & curl.exe --fail --location --retry 3 --max-time 600 --silent --show-error `
+        'https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf' `
+        --output $env:FRANKESSO_SMOKE_MODEL
+    if ($LASTEXITCODE -ne 0) { throw 'Could not acquire the pinned model fixture.' }
+    $expectedModel = '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5'
+    if ((Get-FileHash -Algorithm SHA256 -LiteralPath $env:FRANKESSO_SMOKE_MODEL).Hash -ne $expectedModel) {
+        throw 'Model fixture checksum mismatch.'
+    }
+}
 Run-Installer $setup
 try {
     $launcher = Join-Path $app 'python/pythonw.exe'

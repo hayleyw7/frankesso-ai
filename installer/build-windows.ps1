@@ -54,7 +54,7 @@ Run-Checked cmake @('-S',$llama,'-B',$llamaOut,'-G','Visual Studio 17 2022','-A'
     '-DGGML_OPENMP=OFF','-DGGML_NATIVE=OFF','-DGGML_SSE42=ON','-DGGML_AVX=ON',
     '-DGGML_AVX2=ON','-DGGML_BMI2=OFF','-DLLAMA_OPENSSL=OFF','-DLLAMA_BUILD_TESTS=OFF',
     '-DLLAMA_BUILD_EXAMPLES=OFF','-DLLAMA_BUILD_UI=OFF','-DLLAMA_USE_PREBUILT_UI=OFF',
-    '-DLLAMA_CONNECT=OFF','-DLLAMA_BUILD_APP=OFF','-DLLAMA_BUILD_SERVER=ON')
+    '-DGGML_RPC=OFF','-DLLAMA_CONNECT=OFF','-DLLAMA_BUILD_APP=OFF','-DLLAMA_BUILD_SERVER=ON')
 Run-Checked cmake @('--build',$llamaOut,'--config','Release','--target','llama-server','--parallel','4')
 $binary = @(Get-ChildItem -Path $llamaOut -Filter 'llama-server.exe' -File -Recurse)
 if ($binary.Count -ne 1) { throw 'Expected exactly one Windows llama-server executable.' }
@@ -70,11 +70,11 @@ foreach ($flag in @('--offline','--no-agent','--no-ui-mcp-proxy','--no-ui','--no
     if (-not $help.Contains($flag)) { throw "The bundled runtime lacked required flag $flag." }
 }
 
-# Preserve the license from the exact Qwen quantization distributed on first launch.
+# Preserve the license from the exact Qwen quantization imported by the user.
 Invoke-WebRequest -UseBasicParsing `
     -Uri 'https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/LICENSE' `
     -OutFile (Join-Path $third 'qwen.txt')
-$pyFiles = @('agent.py','desktop.py','run_agent.py','model_setup.py','document_readers.py','private_skills.py','web_search.py','chat_state.py')
+$pyFiles = @('agent.py','desktop.py','run_agent.py','model_setup.py','document_readers.py','private_skills.py','local_only.py','chat_state.py')
 $appAgent = Join-Path $payload 'agent'
 New-Item -ItemType Directory -Path $appAgent | Out-Null
 foreach ($file in $pyFiles) { Copy-Item (Join-Path $root "agent/$file") $appAgent }

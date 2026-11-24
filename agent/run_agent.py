@@ -9,6 +9,7 @@ import tempfile
 import time
 
 import agent
+from local_only import install_socket_guard
 
 
 def server_environment(source=None):
@@ -29,14 +30,18 @@ class LocalServer:
         self.model_path = model_path or self.project / "models" / "Qwen3-4B-Q4_K_M.gguf"
 
     def __enter__(self):
+        runner = self.project / "runner" / "llama-server.exe"
+        agent.Controller._check_components(runner.absolute())
+        model_path = Path(self.model_path).absolute()
+        agent.Controller._check_components(model_path)
         with socket.socket() as check:
             if check.connect_ex(("127.0.0.1", agent.PORT)) == 0:
                 raise RuntimeError("Agent port 18081 is already in use; no process was changed.")
         self.logs = tempfile.TemporaryDirectory(prefix="local-agent-server-")
         self.log_path = Path(self.logs.name) / "server.log"
         self.log = self.log_path.open("w", encoding="utf-8")
-        args = [str(self.project / "runner" / "llama-server.exe"), "-m",
-                str(self.model_path),
+        args = [str(runner.absolute()), "-m",
+                str(model_path),
                 "--alias", "local-qwen", "--host", "127.0.0.1", "--port", str(agent.PORT),
                 "--cors-origins", "localhost",
                 "--offline", "--no-agent", "--no-ui-mcp-proxy", "--no-ui",
@@ -117,10 +122,12 @@ class LocalServer:
 
 def read_config():
     config_path = Path(__file__).parent / "access.json"
+    agent.Controller._check_components(config_path.absolute())
     if not config_path.exists():
         config_path = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Frankesso" / "access.json"
+    agent.Controller._check_components(config_path.absolute())
     return json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {
-        "approved_local_roots": [], "web_mode": "ask_each_request",
+        "approved_local_roots": [],
     }
 
 
@@ -130,10 +137,11 @@ def runtime_root(config):
 
 if __name__ == "__main__":
     try:
+        install_socket_guard(agent.PORT)
         config = read_config()
         project = runtime_root(config)
         with LocalServer(project):
-            agent.main(approved_roots=config["approved_local_roots"], web_mode=config.get("web_mode", "mock"), private_skills_root=config.get("private_skills_root"))
-    except (OSError, RuntimeError) as error:
+            agent.main(approved_roots=config["approved_local_roots"], private_skills_root=config.get("private_skills_root"))
+    except (OSError, RuntimeError, ValueError) as error:
         print(str(error))
         raise SystemExit(1)

@@ -14,6 +14,7 @@ from threading import Event, Thread
 import agent
 import chat_state
 import model_setup
+from local_only import install_socket_guard
 from run_agent import LocalServer, read_config, runtime_root
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
@@ -103,7 +104,7 @@ class Worker:
     def __init__(self, installed=False, animate_replies=False):
         self.installed = installed
         self.animate_replies = animate_replies
-        self.download_stop = Event()
+        self.import_stop = Event()
         self.inbox = Queue()
         self.outbox = Queue()
         self.stop = Event()
@@ -158,16 +159,18 @@ class Worker:
     def set_up_model(self):
         folder = Path(os.environ["LOCALAPPDATA"]) / "FrankessoDesktop" / "models"
         model = folder / model_setup.MODEL.filename
+        agent.Controller._check_components(model.absolute())
         if model.is_file():
             self.outbox.put(("status", "Verifying the installed model…"))
             if model_setup.verify(model, self.stop):
                 return model
-        message = "Download the model once to use Frankesso offline."
+        message = "Import your local Qwen model file to get started."
         if model.exists():
-            message = "The installed model failed verification. Download a fresh copy."
+            message = "The installed model failed verification. Import a verified copy."
         while not self.stop.is_set():
             self.outbox.put(("needs_model", message))
-            if self.inbox.get() != "download" or self.stop.is_set():
+            source = self.inbox.get()
+            if source is None or self.stop.is_set():
                 return None
             last = 0
 
@@ -179,25 +182,26 @@ class Worker:
                     last = now
 
             try:
-                self.outbox.put(("status", "Downloading the local model…"))
-                result = model_setup.download(folder, self.download_stop, progress)
+                source = Path(source)
+                if not source.is_absolute():
+                    raise ValueError("Paste the full path to a local GGUF file.")
+                agent.Controller._check_components(source)
+                agent.Controller._check_components(model.absolute())
+                self.outbox.put(("status", "Importing the local model…"))
+                result = model_setup.import_model(source, folder, self.import_stop, progress)
                 self.outbox.put(("model_ready", "Model verified. Starting Frankesso…"))
                 return result
             except model_setup.Canceled:
-                message = "Download canceled. You can start it again any time."
-            except (OSError, ValueError, RuntimeError, model_setup.HTTPException) as error:
-                # Some HTTP exceptions contain temporary CDN URLs. Don't display them.
-                if isinstance(error, OSError) and not isinstance(error, model_setup.URLError):
-                    message = "Could not save the model. Check available disk space and try again."
-                elif isinstance(error, ValueError):
-                    message = str(error)
-                else:
-                    message = "Could not download the model. Check your connection and try again."
+                message = "Import canceled. You can try again any time."
+            except ValueError as error:
+                message = str(error)
+            except OSError:
+                message = "Could not import the model. Check the file path and available disk space."
         return None
 
     def close(self):
         self.stop.set()
-        self.download_stop.set()
+        self.import_stop.set()
         self.inbox.put(None)
         if self.server is not None:
             self.server.cancel()
@@ -557,30 +561,37 @@ def launch(tk, ttk, installed=False):
     setup.grid(row=2, column=0, sticky="ew")
     setup.columnconfigure(0, weight=1)
     setup.grid_remove()
-    ttk.Label(setup, style="Frankesso.TLabel", text="One-time model download · 2.5 GB").grid(row=0, column=0, sticky="w")
-    ttk.Label(setup, style="Frankesso.TLabel", text="Downloads from Hugging Face. No account required.").grid(
-        row=1, column=0, sticky="w")
+    ttk.Label(setup, style="Frankesso.TLabel", text="Local Qwen3-4B-Q4_K_M.gguf file (2.5 GB)").grid(
+        row=0, column=0, sticky="w")
+    model_path = ttk.Entry(setup)
+    model_path.grid(row=1, column=0, sticky="ew", padx=(0, BUTTON_GAP))
     progress_bar = ttk.Progressbar(setup, maximum=100, style="Frankesso.Horizontal.TProgressbar")
-    progress_bar.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+    progress_bar.grid(row=2, column=0, columnspan=1, sticky="ew", pady=(6, 0))
     progress_bar.grid_remove()
 
     def get_model():
-        download_button.state(["disabled"])
+        path = model_path.get().strip().strip('"')
+        if not path:
+            status.set("Paste the full path to your local GGUF file.")
+            model_path.focus_set()
+            return
+        import_button.state(["disabled"])
+        model_path.state(["disabled"])
         cancel_button.grid()
         progress_bar["value"] = 0
         progress_bar.grid()
-        worker.download_stop.clear()
-        worker.inbox.put("download")
+        worker.import_stop.clear()
+        worker.inbox.put(path)
 
-    def cancel_download():
-        worker.download_stop.set()
+    def cancel_import():
+        worker.import_stop.set()
         cancel_button.state(["disabled"])
-        status.set("Canceling the download…")
+        status.set("Canceling the import…")
 
-    download_button = ttk.Button(setup, text="Download model", style=PRIMARY_BUTTON_STYLE, command=get_model)
-    download_button.grid(row=0, column=1, sticky="e")
-    cancel_button = ttk.Button(setup, text="Cancel", style=SECONDARY_BUTTON_STYLE, command=cancel_download)
-    cancel_button.grid(row=1, column=1, sticky="e")
+    import_button = ttk.Button(setup, text="Import model", style=PRIMARY_BUTTON_STYLE, command=get_model)
+    import_button.grid(row=1, column=1, sticky="e")
+    cancel_button = ttk.Button(setup, text="Cancel", style=SECONDARY_BUTTON_STYLE, command=cancel_import)
+    cancel_button.grid(row=2, column=1, sticky="e")
     cancel_button.grid_remove()
 
     def poll():
@@ -591,14 +602,15 @@ def launch(tk, ttk, installed=False):
                     status.set(message)
                     setup.grid()
                     progress_bar.grid_remove()
-                    download_button.state(["!disabled"])
+                    import_button.state(["!disabled"])
+                    model_path.state(["!disabled"])
                     cancel_button.state(["!disabled"])
                     cancel_button.grid_remove()
                 elif kind == "progress":
                     done, total = message
                     progress_bar["value"] = 100 * done / total
-                    if not worker.download_stop.is_set():
-                        status.set(f"Downloading… {done / 1000000000:.2f} / {total / 1000000000:.2f} GB")
+                    if not worker.import_stop.is_set():
+                        status.set(f"Importing… {done / 1000000000:.2f} / {total / 1000000000:.2f} GB")
                 elif kind == "status":
                     status.set(message)
                 elif kind == "model_ready":
@@ -666,6 +678,7 @@ def windows_identity(installed):
 
 if __name__ == "__main__":
     try:
+        install_socket_guard(agent.PORT)
         import tkinter as tk
         from tkinter import ttk
         installed = sys.argv[1:] == ["--installed"]
