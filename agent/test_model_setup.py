@@ -50,31 +50,50 @@ class ModelSetupTests(unittest.TestCase):
         self.stop.clear()
         self.assertTrue(self.import_file().exists())
 
-    def test_desktop_first_launch_waits_for_local_import_and_does_not_require_network(self):
+    def test_desktop_first_launch_uses_bundled_model_without_user_input(self):
         from unittest.mock import patch
         import desktop
-        import_local_file = model_setup.import_model
 
-        with patch.dict(desktop.os.environ, {"LOCALAPPDATA": str(self.root)}), \
+        self.destination.mkdir()
+        expected = self.destination / self.spec.filename
+        expected.write_bytes(self.body)
+        with patch.object(desktop, "ASSETS", self.root / "assets"), \
                 patch.object(desktop, "require_avx2"), \
                 patch.object(desktop, "LocalServer") as server, \
                 patch.object(model_setup, "MODEL", self.spec), \
-                patch.object(model_setup, "import_model",
-                             side_effect=lambda source, dest, stop, progress: import_local_file(source, dest, stop, progress, self.spec)) as importer:
+                patch.object(model_setup, "import_model", side_effect=AssertionError("unexpected import")):
             worker = desktop.Worker(installed=True)
             try:
-                self.assertEqual(worker.outbox.get(timeout=3)[0], "needs_model")
-                server.assert_not_called()
-                worker.inbox.put("https://fixture.invalid/wrong.gguf")
-                self.assertEqual(worker.outbox.get(timeout=3)[0], "needs_model")
-                importer.assert_not_called()
-                worker.inbox.put(str(self.source))
-                self.assertEqual(worker.outbox.get(timeout=3)[0], "status")
-                self.assertEqual(worker.outbox.get(timeout=3)[0], "progress")
-                self.assertEqual(worker.outbox.get(timeout=3)[0], "model_ready")
+                self.assertEqual(worker.outbox.get(timeout=3), ("status", "Verifying the bundled model…"))
+                self.assertEqual(worker.outbox.get(timeout=3), ("status", "Starting the local model…"))
                 self.assertEqual(worker.outbox.get(timeout=3)[0], "ready")
-                self.assertEqual(importer.call_args.args[0], self.source)
-                self.assertEqual(server.call_args.kwargs["model_path"], self.root / "FrankessoDesktop" / "models" / self.spec.filename)
+                self.assertEqual(server.call_args.kwargs["model_path"], expected)
             finally:
                 worker.close()
                 worker.thread.join(3)
+            self.assertFalse(worker.thread.is_alive())
+
+    def test_bundled_build_refuses_missing_or_corrupt_model_without_fallback(self):
+        from unittest.mock import patch
+        import desktop
+
+        with patch.object(desktop, "ASSETS", self.root / "assets"), \
+                patch.object(desktop, "require_avx2"), \
+                patch.object(desktop, "LocalServer") as server, \
+                patch.object(model_setup, "MODEL", self.spec):
+            self.destination.mkdir()
+            target = self.destination / self.spec.filename
+            for case in ("missing", "corrupt"):
+                with self.subTest(case=case):
+                    if case == "corrupt":
+                        target.write_bytes(b"x" * len(self.body))
+                    worker = desktop.Worker(installed=True)
+                    try:
+                        self.assertEqual(worker.outbox.get(timeout=3)[0], "status")
+                        kind, message = worker.outbox.get(timeout=3)
+                        self.assertEqual(kind, "fatal")
+                        self.assertIn("Reinstall Frankesso", message)
+                        server.assert_not_called()
+                    finally:
+                        worker.close()
+                        worker.thread.join(3)

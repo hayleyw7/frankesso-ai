@@ -12,9 +12,9 @@ Frankesso supports bounded local text search, text edits with previews and backu
 
 ## Windows desktop app
 
-Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, run `Frankesso-2.0.0-Windows-x64-Setup.exe` and open **Frankesso** from Start. Setup is for the current Windows user and bundles Python, Tk, and the CPU model runner. No admin access, Git, separate Python, or terminal setup is required. The installer requires an AVX2-capable x64 processor. Native ARM64 and 32-bit Windows are not supported.
+Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, extract the complete Windows package, keep its `.bin` data files beside `Frankesso-2.0.0-Windows-x64-Setup.exe`, and run Setup. Setup is for the current Windows user and includes Python, Tk, the CPU model runner, and Qwen3-4B (about 2.5 GB). No admin access, Git, separate Python, or terminal setup is required. The installer requires an AVX2-capable x64 processor. Native ARM64 and 32-bit Windows are not supported.
 
-Before first use, obtain the [pinned Qwen3-4B GGUF model](https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf) (2.5 GB) separately in your browser, or copy it from local storage. Open Frankesso, paste the full local file path, and choose **Import model**. The app verifies the model before using it. Import works without a connection. Desktop chat is text-only. The separate CLI retains approved local file tools. Uninstalling removes the desktop app, Start shortcut, and its imported model without touching your original file or separate CLI setup.
+Open **Frankesso** from Start. It verifies and opens the model installed with the app. There is no separate model download, import, or account setup. Desktop chat is text-only. The separate CLI retains approved local file tools. Uninstalling removes the desktop app, Start shortcut, and bundled model without touching separate CLI files.
 
 ## Developer setup and command-line tools
 
@@ -73,7 +73,7 @@ Sessions that access the private skills tree are excluded from saved chat contex
 
 ## Offline behavior and limitations
 
-The Windows controller allows Python socket operations only for its same-device model at `127.0.0.1:18081`. It does not use proxies, DNS hostnames, or redirects. The runner binds to loopback with `--offline --no-agent --no-ui-mcp-proxy --no-ui`, and the launcher strips inherited `LLAMA_ARG_*` settings. Windows file tools and model import reject UNC paths, mapped network drives, and reparse points.
+The Windows controller allows Python socket operations only for its same-device model at `127.0.0.1:18081`. It does not use proxies, DNS hostnames, or redirects. The runner binds to loopback with `--offline --no-agent --no-ui-mcp-proxy --no-ui`, and the launcher strips inherited `LLAMA_ARG_*` settings. Windows file tools and bundled-model startup reject UNC paths, mapped network drives, and reparse points.
 
 The 4B model can make mistakes; malformed tool calls and unknown tools are rejected. Only the current request can authorize tool planning. Saved chat context is available solely for text-only replies. The CLI reloads a selected private skill when applicable. File backups persist, but temporary session files are deleted on exit.
 
@@ -90,7 +90,7 @@ python -B -m unittest -v test_agent test_local_only test_documents test_private_
 
 The suite exercises permissions, real-broker denial without networking, fake HTTP responses, bounded parsers, private-skill isolation, and synthetic fixtures. Use the existing bundled Python, or another interpreter with `pypdf` and Pillow, to include PDF and image tests; those tests skip when the libraries are unavailable. The absolute-path permission test targets Windows path semantics, not POSIX paths.
 
-The [Windows installer workflow](.github/workflows/windows-installer.yml) builds an unsigned test artifact and runs install/Start shortcut/uninstall checks in a separate Windows runner. The full-model check fetches the fixture outside the installed app, then verifies local import and on-device inference. See [installer verification](installer/README.md) for the Windows release gate. A source checkout can still launch the developer desktop preview using `Install Frankesso Desktop.cmd` after setting up a local Python with Tkinter and the runtime; that's not the v2 installer.
+The [Windows installer workflow](.github/workflows/windows-installer.yml) builds an unsigned test artifact and runs install/Start shortcut/uninstall checks in a separate Windows runner. The full-model check verifies the installed model and runs on-device inference without a manual setup step. See [installer verification](installer/README.md) for the Windows release gate. A source checkout can still launch the developer desktop preview using `Install Frankesso Desktop.cmd` after setting up a local Python with Tkinter and the runtime; that's not the v2 installer.
 
 From the same `agent` directory, run the actual-model integration test with the path to your existing runtime folder:
 

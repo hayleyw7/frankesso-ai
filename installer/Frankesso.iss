@@ -16,10 +16,13 @@ OutputDir=..\dist
 OutputBaseFilename=Frankesso-2.0.0-Windows-x64-Setup
 Compression=lzma2
 SolidCompression=yes
+DiskSpanning=yes
+DiskSliceSize=1000000000
 WizardStyle=modern
 
 [Files]
 Source: "build\payload\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\models\Qwen3-4B-Q4_K_M.gguf"; DestDir: "{app}\models"; Flags: ignoreversion nocompression
 
 [Icons]
 Name: "{userprograms}\Frankesso"; Filename: "{app}\python\pythonw.exe"; Parameters: "-E -s -B ""{app}\agent\desktop.py"" --installed"; WorkingDir: "{app}"; IconFilename: "{app}\assets\frankesso.ico"; AppUserModelID: "Frankesso.Desktop"

@@ -47,10 +47,6 @@ try:
     assert radio.winfo_reqheight() >= round(root.winfo_fpixels("1i") * 48 / 96)
     assert radio.winfo_reqheight() == action.winfo_reqheight()
     assert str(style.layout(desktop.PRIMARY_BUTTON_STYLE)[0][0]) == "Frankesso.RoundedPrimary"
-    download = ttk.Button(root, text="Import model", style=desktop.PRIMARY_BUTTON_STYLE)
-    assert download.winfo_reqheight() == action.winfo_reqheight()
-    assert style.layout(download.cget("style")) == style.layout(action.cget("style"))
-
     # Capture only this synthetic application window; never the runner desktop.
     for widget in root.winfo_children():
         widget.destroy()
@@ -63,15 +59,13 @@ try:
     assert all(photo.transparency_get(0, 0) for photo in logos.values())
     header_art = ttk.Label(fixture, style="Frankesso.TLabel", image=logos["light"])
     header_art.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
-    for row, (label, disabled) in enumerate((("Ready", False), ("Model import", True)), 1):
+    for row, (label, disabled) in enumerate((("Ready", False), ("Starting model", True)), 1):
         ttk.Label(fixture, text=label, style="Frankesso.TLabel").grid(row=row, column=0, padx=(0, 12), sticky="w")
         for col, (label, role) in enumerate((("New chat", "Secondary"), ("Send", "Primary")), 1):
             button = ttk.Button(fixture, text=label, style=f"Frankesso.{role}.TButton")
             button.grid(row=row, column=col, padx=(0, 8), pady=4)
             if disabled:
                 button.state(["disabled"])
-    ttk.Button(fixture, text="Import model", style=desktop.PRIMARY_BUTTON_STYLE).grid(
-        row=3, column=1, columnspan=2, sticky="e", pady=(4, 8))
     sample_text = []
     for row, (label, height) in enumerate((("A synthetic transcript", 2), ("A synthetic draft message", 1)), 4):
         panel = desktop.chat_panel(fixture, ttk, input_field=row == 5)
@@ -103,31 +97,19 @@ try:
 finally:
     root.destroy()
 
-worker = desktop.Worker(installed=True)
-try:
-    assert worker.outbox.get(timeout=20)[0] == "needs_model"
-    assert worker.server is None
-finally:
-    worker.close()
-    worker.thread.join(20)
-assert not worker.thread.is_alive()
-
 if os.environ.get("FULL_MODEL_SMOKE") == "1":
-    model = Path(os.environ["FRANKESSO_SMOKE_MODEL"])
     worker = desktop.Worker(installed=True, animate_replies=True)
     try:
-        assert worker.outbox.get(timeout=20)[0] == "needs_model"
-        worker.inbox.put(str(model))
-        kind, message = worker.outbox.get(timeout=60)
-        assert kind == "status", (kind, message)
-        while kind != "model_ready":
-            kind, message = worker.outbox.get(timeout=60)
-            assert kind in {"progress", "model_ready"}, (kind, message)
+        # No user input, previous model, environment path, or model import.
+        events = [worker.outbox.get(timeout=60), worker.outbox.get(timeout=60)]
+        assert events == [("status", "Verifying the bundled model…"),
+                          ("status", "Starting the local model…")], events
         kind, message = worker.outbox.get(timeout=265)
         if kind != "ready":
             if worker.server and worker.server.startup_log:
                 print(worker.server.startup_log, file=sys.stderr)
             raise AssertionError(message)
+        assert worker.server.model_path == app / "models" / "Qwen3-4B-Q4_K_M.gguf"
         worker.inbox.put("Name one common plant. One word only.")
         try:
             kind, reply = worker.outbox.get(timeout=195)

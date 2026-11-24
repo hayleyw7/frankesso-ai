@@ -7,7 +7,8 @@ $payload = Join-Path $build 'payload'
 $python = Join-Path $payload 'python'
 $third = Join-Path $payload 'licenses'
 $runner = Join-Path $payload 'runner'
-New-Item -ItemType Directory -Path $build,$payload,$third,$runner | Out-Null
+$models = Join-Path $build 'models'
+New-Item -ItemType Directory -Path $build,$payload,$third,$runner,$models | Out-Null
 
 function Run-Checked {
     param([string]$Program, [string[]]$Arguments)
@@ -70,7 +71,18 @@ foreach ($flag in @('--offline','--no-agent','--no-ui-mcp-proxy','--no-ui','--no
     if (-not $help.Contains($flag)) { throw "The bundled runtime lacked required flag $flag." }
 }
 
-# Preserve the license from the exact Qwen quantization imported by the user.
+# Pin and bundle the model at build time. Setup and the installed app never fetch it.
+$modelUrl = 'https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf'
+$modelPath = Join-Path $models 'Qwen3-4B-Q4_K_M.gguf'
+$modelHash = '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5'
+Run-Checked curl.exe @('--fail','--location','--retry','3','--max-time','600','--silent','--show-error',
+    $modelUrl,'--output',$modelPath)
+if ((Get-Item -LiteralPath $modelPath).Length -ne 2497280256 -or
+    (Get-FileHash -Algorithm SHA256 -LiteralPath $modelPath).Hash -ne $modelHash) {
+    throw 'The bundled model size or SHA-256 is incorrect.'
+}
+
+# Preserve the license from the exact Qwen quantization included in the installer.
 Invoke-WebRequest -UseBasicParsing `
     -Uri 'https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/LICENSE' `
     -OutFile (Join-Path $third 'qwen.txt')
@@ -93,6 +105,14 @@ $compilerRoot = Join-Path $build 'inno'
 Install-BuildTool $innoSetup @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/PORTABLE=1',('/DIR="' + $compilerRoot + '"'))
 $compiler = Join-Path $compilerRoot 'ISCC.exe'
 Run-Checked $compiler @((Join-Path $PSScriptRoot 'Frankesso.iss'))
-$setup = Join-Path $root 'dist/Frankesso-2.0.0-Windows-x64-Setup.exe'
-$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setup).Hash.ToLowerInvariant()
-"$hash  Frankesso-2.0.0-Windows-x64-Setup.exe" | Set-Content -Encoding ascii (Join-Path $root 'dist/SHA256SUMS.txt')
+$dist = Join-Path $root 'dist'
+$setup = Get-Item -LiteralPath (Join-Path $dist 'Frankesso-2.0.0-Windows-x64-Setup.exe')
+$slices = @(Get-ChildItem -LiteralPath $dist -Filter 'Frankesso-2.0.0-Windows-x64-Setup-*.bin' -File |
+    Sort-Object Name)
+if ($slices.Count -lt 2) { throw 'The model installer did not produce its data slices.' }
+$packageFiles = @($setup) + $slices
+$checksums = foreach ($file in $packageFiles) {
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant()
+    "$hash  $($file.Name)"
+}
+$checksums | Set-Content -Encoding ascii (Join-Path $dist 'SHA256SUMS.txt')
