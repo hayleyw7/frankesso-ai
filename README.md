@@ -14,6 +14,8 @@ Frankesso supports bounded local text search, text edits with previews and backu
 
 Frankesso v2's Windows x64 installer is in development and not released. Once the release is available, extract the complete Windows package, keep its `.bin` data files beside `Frankesso-2.0.0-Windows-x64-Setup.exe`, and run Setup. Setup is for the current Windows user and includes Python, Tk, the CPU model runner, and Qwen3-4B (about 2.5 GB). No admin access, Git, separate Python, or terminal setup is required. The installer requires an AVX2-capable x64 processor. Native ARM64 and 32-bit Windows are not supported.
 
+The bundled **Qwen3-4B (Q4_K_M)** was [released April 29, 2025](https://qwenlm.github.io/blog/qwen3/). Its training-data cutoff is not confirmed.
+
 Open **Frankesso** from Start. It verifies and opens the model installed with the app. There is no separate model download, import, or account setup. Desktop chat is text-only. The separate CLI retains approved local file tools. Uninstalling removes the desktop app, Start shortcut, and bundled model without touching separate CLI files.
 
 ## Developer setup and command-line tools
