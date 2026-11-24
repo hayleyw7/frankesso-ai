@@ -1,0 +1,61 @@
+name: Android host-only model comparison
+on:
+  pull_request:
+    paths: ['qa/CompareAndroidModels.java', '.github/workflows/model-comparison.yml']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Fetch and verify exact test models
+        run: |
+          mkdir "$RUNNER_TEMP/qwen"
+          cd "$RUNNER_TEMP/qwen"
+          base=https://huggingface.co
+          curl -fLSs --retry 3 --max-time 500 "$base/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf" -o qwen25-05.gguf
+          curl -fLSs --retry 3 --max-time 500 "$base/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf" -o qwen3-17.gguf
+          curl -fLSs --retry 3 --max-time 500 "$base/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf" -o qwen3-40.gguf
+          sha256sum -c <<'SHAS'
+          74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db  qwen25-05.gguf
+          d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5  qwen3-17.gguf
+          7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5  qwen3-40.gguf
+          SHAS
+          wc -c *.gguf
+      - name: Compile production Android JNI on host, with test-only matched seeds
+        run: |
+          work="$RUNNER_TEMP/qwen"
+          mkdir "$work/classes"
+          java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          export CPLUS_INCLUDE_PATH="$java_home/include:$java_home/include/linux"
+          cpp=android/app/src/main/cpp
+          grep -Fq 'llama_sampler_init_dist(LLAMA_DEFAULT_SEED)' "$cpp/inference.cpp"
+          sed -i '1i#include <cstdlib>' "$cpp/inference.cpp"
+          sed -i 's/llama_sampler_init_dist(LLAMA_DEFAULT_SEED)/llama_sampler_init_dist(std::stoul(std::getenv("QA_SEED")))/' "$cpp/inference.cpp"
+          cmake -S "$cpp" -B "$work/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$work/build" --target frankesso --parallel 2
+          src=android/app/src/main/java/app/frankesso/android
+          javac --release 17 -d "$work/classes" "$src/ChatPrompt.java" "$src/NativeModel.java" qa/CompareAndroidModels.java
+      - name: Run identical fixtures and collect raw replies
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/qwen"
+          lscpu
+          for seed in 11 29 47; do
+            for model in qwen25-05 qwen3-17 qwen3-40; do
+              QA_SEED="$seed" java -Djava.library.path="$work/build" -cp "$work/classes" app.frankesso.android.CompareAndroidModels \
+                "$model" "$work/$model.gguf" 2>"$work/$model-$seed.stderr" | tee -a "$work/model-comparison.tsv"
+            done
+          done
+          test "$(grep -c $'^CASE\t' "$work/model-comparison.tsv")" -eq 72
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: host-only-model-comparison
+          path: ${{ runner.temp }}/qwen/model-comparison.tsv
+          retention-days: 14
