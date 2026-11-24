@@ -144,7 +144,7 @@ final class ChatPrompt {
             throw new IllegalArgumentException("That message is too long for this small model.");
         }
         String user = turn("user", input);
-        String suffix = "<|im_start|>assistant\n";
+        String suffix = "<|im_start|>assistant\n<think>\n\n</think>\n\n";
         String recent = "";
         for (var it = turns.descendingIterator(); it.hasNext();) {
             String candidate = it.next() + recent;

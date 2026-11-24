@@ -3,9 +3,9 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:icon="@mipmap/frankesso"
-        android:label="Frankesso"
+        android:label="Frankesso 4B Test"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity"
+        <activity android:name="app.frankesso.android.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">

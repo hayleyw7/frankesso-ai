@@ -1,11 +1,11 @@
 # Frankesso for Android
 
-Frankesso v2 for Android is **offline-only**. The text chat app runs its bundled model on **64-bit ARM phones with Android 8.0 or newer**. Android blocks the app from opening internet connections because the APK does not request the `INTERNET` permission. No account, separate model download, or root access is required.
+This side-by-side Frankesso 4B test build for Android is **offline-only**. The text chat app runs its bundled model on **64-bit ARM phones with Android 8.0 or newer**. Android blocks the app from opening internet connections because the APK does not request the `INTERNET` permission. No account, separate model download, or root access is required.
 
 ## Install and chat
 
-1. Download and install the APK. It is roughly 500 MB because the model is included. The GitHub Actions test artifact is a direct debug APK download for signed-in GitHub users, not a production distribution.
-2. Open **Frankesso** from the app launcher. On first launch, it prepares and verifies its bundled model automatically, with progress. No model picker, separate download, or import is needed. The initial private model copy needs **at least 525 MB free after installing**; if storage is low, free some space and tap **Retry setup**.
+1. Download and install the APK. It is roughly 2.5 GB because the model is included. The GitHub Actions test artifact is a direct debug APK download for signed-in GitHub users, not a production distribution.
+2. Open **Frankesso 4B Test** from the app launcher. On first launch, it prepares and verifies its bundled model automatically, with progress. No model picker, separate download, or import is needed. The initial private model copy needs **at least 2.6 GB free after installing**; if storage is low, free some space and tap **Retry setup**.
 3. Start chatting when the status says **Ready.** Replies appear as they’re generated. Tap **Stop** to end a reply; a one-minute limit protects against a slow or stalled generation. **New chat** clears the visible transcript and in-memory context. Chats are not synced or saved; the small model can get answers wrong and uses a short context. Desktop file tools are not included.
 
 The workflow skips the Android emulator test when the runner cannot access KVM. A passing build with that warning does not verify launch or chat on Android; use the airplane-mode phone check below.
@@ -34,6 +34,6 @@ python3 android/scripts/bundled_model.py verify-apk android/app/build/outputs/ap
 
 ## Included components
 
-The bundled **Qwen2.5-0.5B-Instruct (Q4_K_M)** was [released September 19, 2024](https://qwenlm.github.io/blog/qwen2.5-llm/). Its training-data cutoff is not confirmed.
+The bundled **Qwen3-4B (Q4_K_M)** was [released April 29, 2025](https://qwenlm.github.io/blog/qwen3/). Its training-data cutoff is not confirmed.
 
-The APK includes the unmodified [official Qwen2.5 0.5B Instruct Q4_K_M GGUF](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/blob/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf) (491,400,032 bytes), under [Apache-2.0](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/blob/9217f5db79a29953eb74d5343926648285ec7e67/LICENSE). It compiles [llama.cpp](https://github.com/ggml-org/llama.cpp/tree/78a8ae14be559b45f5f13ddee82c188b683d5d8d) into one local native runtime. The license and attribution files ship in the APK under `assets/third-party/`.
+The APK includes the unmodified [official Qwen3 4B Q4_K_M GGUF](https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf) (2,497,280,256 bytes), under [Apache-2.0](https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/bc640142c66e1fdd12af0bd68f40445458f3869b/LICENSE). It compiles [llama.cpp](https://github.com/ggml-org/llama.cpp/tree/78a8ae14be559b45f5f13ddee82c188b683d5d8d) into one local native runtime. The license and attribution files ship in the APK under `assets/third-party/`.
