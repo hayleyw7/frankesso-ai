@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import json
 from pathlib import Path
 import unittest
@@ -64,22 +64,29 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(chat.ask("/memories"), "No saved notes.")
             self.assertEqual(request.call_count, 1)
 
-    def test_desktop_reads_the_device_date_again_for_each_chat_request(self):
+    def test_desktop_reads_the_device_clock_for_each_request(self):
         request = Mock(return_value={"content": "No live news access."})
         chat = desktop.Chat(request)
-        with patch.object(chat_state, "date", wraps=date) as clock:
-            clock.today.return_value = date(2026, 12, 31)
-            self.assertEqual(chat.ask("What's the date?"), "Today is 2026-12-31.")
+        with (patch.object(chat_state, "datetime", wraps=datetime) as clock,
+              patch.object(chat_state, "_preferred_24_hour", return_value=False) as preferred):
+            clock.now.return_value = datetime(2026, 12, 31, 0, 0, 59)
+            self.assertEqual(chat.ask("What's the date?"), "Today is December 31, 2026.")
+            self.assertEqual(chat.ask("What's the time?"), "The device time is 12:00 AM.")
+            self.assertEqual(chat.ask("Where am I right now?"), "I do not have access to your location.")
             request.assert_not_called()
             chat.ask("What happened in the news today?")
             first = request.call_args.args[0][0]["content"]
-            self.assertIn("The device's local date is 2026-12-31.", first)
-            self.assertIn("This gives the date only. It does not verify current events.", first)
-            clock.today.return_value = date(2027, 1, 1)
+            self.assertIn("The device's local date is December 31, 2026.", first)
+            self.assertIn("Its local time is 12:00 AM.", first)
+            self.assertIn("Without a reliable dated source, say you cannot verify time-sensitive facts.", first)
+            clock.now.return_value = datetime(2027, 1, 1, 12, 59, 59)
+            self.assertEqual(chat.ask("What's the time?"), "The device time is 12:59 PM.")
+            preferred.return_value = True
+            self.assertEqual(chat.ask("What\'s the time?"), "The device time is 12:59.")
             chat.ask("What happened in the news today?")
             second = request.call_args.args[0][0]["content"]
-            self.assertIn("The device's local date is 2027-01-01.", second)
-            self.assertNotIn("2026-12-31", second)
+            self.assertIn("The device's local date is January 1, 2027.", second)
+            self.assertNotIn("December 31, 2026", second)
 
     def test_desktop_rejects_tool_calls_even_with_saved_context(self):
         with TemporaryDirectory() as folder:

@@ -1,6 +1,8 @@
+from datetime import datetime
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import sys
 from threading import Event
 import unittest
 from unittest.mock import patch
@@ -44,6 +46,16 @@ class MacDesktopTests(unittest.TestCase):
                 finally:
                     worker.close()
                     worker.thread.join(timeout=2)
+
+    @unittest.skipUnless(sys.platform == "darwin", "requires Core Foundation")
+    def test_native_clock_preference_drives_exact_answer(self):
+        uses_24_hour = chat_state._apple_uses_24_hour()
+        self.assertIsInstance(uses_24_hour, bool)
+        with patch.object(chat_state, "datetime", wraps=datetime) as clock:
+            clock.now.return_value = datetime(2026, 11, 24, 16, 43, 59)
+            expected_time = "16:43" if uses_24_hour else "4:43 PM"
+            self.assertEqual(desktop.Chat().ask("What time exactly?"),
+                             f"The device time is {expected_time}.")
 
     def test_macos_loader_environment_is_sanitized(self):
         self.assertEqual(run_agent.server_environment(
