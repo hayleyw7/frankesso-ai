@@ -69,6 +69,20 @@ class Tests(unittest.TestCase):
         with patch.object(Path, "lstat", altered):
             self.assertIn("error", self.controller.execute("read_file", {"path": "note.txt"}))
 
+    def test_junction_rejected_before_target_or_child_is_probed(self):
+        junction = self.controller.root / "remote"
+        real = Path.lstat
+        def lstat(path):
+            if path == junction:
+                return type("Info", (), {"st_mode": 0o040000, "st_file_attributes": 0x400})()
+            self.assertNotIn(junction, path.parents)
+            return real(path)
+        with patch.object(Path, "lstat", lstat), patch.object(
+            Path, "exists", side_effect=AssertionError("exists would follow the junction")
+        ):
+            result = self.controller.execute("read_file", {"path": "remote/seeds.txt"})
+        self.assertIn("reparse points", result["error"])
+
     def test_unknown_tools_and_arguments(self):
         for name, args in [("exec_shell_command", {"command": "curl example.com"}), ("read_file", {"path": "note.txt", "approved": True}), ("web_search", {"query": 1})]:
             self.assertIn("error", self.controller.execute(name, args))

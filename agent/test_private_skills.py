@@ -1,6 +1,7 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import agent
 
@@ -35,6 +36,20 @@ class PrivateSkillTests(unittest.TestCase):
 
     def test_skill_path_escape_is_rejected(self):
         self.assertIn("error", self.controller.execute("load_skill", {"path": "../../outside.md"}))
+
+    def test_skill_walk_prunes_reparse_directories_before_descending(self):
+        junction = self.repo.resolve() / "skills" / "remote"
+        junction.mkdir()
+        (junction / "SKILL.md").write_text("Must not be read", encoding="utf-8")
+        real = Path.lstat
+        def lstat(path):
+            if path == junction:
+                return type("Info", (), {"st_mode": 0o040000, "st_file_attributes": 0x400})()
+            self.assertNotIn(junction, path.parents)
+            return real(path)
+        with patch.object(Path, "lstat", lstat):
+            listing = self.controller.execute("list_skills", {})
+        self.assertEqual([entry["path"] for entry in listing["skills"]], ["sample/SKILL.md"])
 
     def test_loaded_preference_in_next_model_request(self):
         self.controller.execute("load_skill", {"path": "sample/SKILL.md"})

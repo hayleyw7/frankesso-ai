@@ -113,12 +113,15 @@ class Controller:
     def _check_components(path):
         require_local_path(path)
         for part in reversed((path, *path.parents)):
-            if part.exists() or part.is_symlink():
+            # Do not call exists() or stat() first: either would follow a
+            # junction or symlink before its destination has been checked.
+            try:
                 info = part.lstat()
-                # Reparse points include symlinks/junctions/cloud placeholders. Fail closed.
-                attrs = getattr(info, "st_file_attributes", 0)
-                if stat.S_ISLNK(info.st_mode) or attrs & (0x400 | 0x1000 | 0x40000 | 0x400000):
-                    raise ValueError("Links, reparse points and offline/cloud files are not allowed")
+            except FileNotFoundError:
+                continue
+            attrs = getattr(info, "st_file_attributes", 0)
+            if stat.S_ISLNK(info.st_mode) or attrs & (0x400 | 0x1000 | 0x40000 | 0x400000):
+                raise ValueError("Links, reparse points and offline/cloud files are not allowed")
 
     def path(self, name):
         if not isinstance(name, str) or len(name) > 240 or any(ord(c) < 32 for c in name):

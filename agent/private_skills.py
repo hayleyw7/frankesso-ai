@@ -1,7 +1,9 @@
 """Read user-selected local Markdown preferences. No installation or script execution."""
+import os
 from pathlib import Path
 
 MAX_SKILL_BYTES = 6000
+MAX_SCAN_ENTRIES = 2000
 
 
 class PrivateSkills:
@@ -10,16 +12,42 @@ class PrivateSkills:
         self.check_path = check_path
         self.check_path(self.repository)
         self.repository = self.repository.resolve()
-        self.directory = self.repository / "skills" if (self.repository / "skills").is_dir() else self.repository
-        self.check_path(self.directory)
+        conventional = self.repository / "skills"
+        self.check_path(conventional)
+        self.directory = conventional if conventional.is_dir() else self.repository
 
     def list(self):
+        self.check_path(self.directory)
         files = []
-        for path in self.directory.rglob("*.md"):
-            self.check_path(path)
-            files.append({"path": path.relative_to(self.directory).as_posix(), "bytes": path.stat().st_size})
-            if len(files) == 50:
-                break
+        scanned = 0
+        for root, dirs, names in os.walk(self.directory, followlinks=False):
+            current = Path(root)
+            allowed = []
+            for name in sorted(dirs):
+                scanned += 1
+                if scanned > MAX_SCAN_ENTRIES:
+                    return files
+                try:
+                    self.check_path(current / name)
+                except (OSError, ValueError):
+                    continue
+                allowed.append(name)
+            dirs[:] = allowed
+            for name in sorted(names):
+                scanned += 1
+                if scanned > MAX_SCAN_ENTRIES:
+                    return files
+                path = current / name
+                if path.suffix.lower() != ".md":
+                    continue
+                try:
+                    self.check_path(path)
+                    files.append({"path": path.relative_to(self.directory).as_posix(),
+                                  "bytes": path.stat().st_size})
+                except (OSError, ValueError):
+                    continue
+                if len(files) == 50:
+                    return files
         return files
 
     def read(self, name):

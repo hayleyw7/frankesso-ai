@@ -23,7 +23,7 @@ if ($env:FRANKESSO_SHORTCUT_REMOVE -eq '1') { return }
 New-Item -ItemType Directory -Path $programs -Force | Out-Null
 $shortcut = $shell.CreateShortcut($path)
 $shortcut.TargetPath = $env:FRANKESSO_PYTHONW
-$shortcut.Arguments = '-B ' + [char]34 + (Join-Path $env:FRANKESSO_PROJECT 'agent\desktop.py') + [char]34
+$shortcut.Arguments = '-E -s -B ' + [char]34 + (Join-Path $env:FRANKESSO_PROJECT 'agent\desktop.py') + [char]34
 $shortcut.WorkingDirectory = $env:FRANKESSO_PROJECT
 $shortcut.IconLocation = (Join-Path $env:FRANKESSO_PROJECT 'assets\frankesso.ico') + ',0'
 $shortcut.Description = $description
