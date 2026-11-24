@@ -1,4 +1,5 @@
 """Explicitly local chat history and manually saved notes. No model tools."""
+from datetime import date
 import json
 import os
 from pathlib import Path
@@ -196,11 +197,23 @@ FAVORITE_QUESTION = re.compile(
 PET_PEEVE_QUESTION = re.compile(r"(?:what(?:['’]s| is) your )?(?:biggest )?pet peeve")
 
 
+def device_date_context():
+    return f"\nThe device's local date is {date.today().isoformat()}. This gives the date only. It does not verify current events."
+
+
 def direct_response(prompt):
     value = " ".join(prompt.casefold().split())
     if value == "test":
         return TEST_REPLY
     question = value.rstrip("?!.")
+    if question in {"what is today's date", "what's today's date", "what is the date",
+                    "what's the date", "what is the date today", "what's the date today",
+                    "what day is it", "what day is it today", "what is today’s date",
+                    "what’s today’s date", "today's date", "today’s date"}:
+        return f"Today is {date.today().isoformat()}."
+    if question in {"what year is it", "what is the current year",
+                    "what's the current year", "what’s the current year"}:
+        return f"The current year is {date.today().year}."
     if PET_PEEVE_QUESTION.fullmatch(question):
         return "Decaf."
     if question == "where are you from":
