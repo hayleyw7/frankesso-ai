@@ -47,7 +47,7 @@ jobs:
           python3 android/scripts/bundled_model.py verify-apk "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > "$RUNNER_TEMP/app-badging.txt"
-          grep -F "name='app.frankesso.android' versionCode='5' versionName='2.0.0-dev-bundled-preview.5'" "$RUNNER_TEMP/app-badging.txt"
+          grep -F "name='app.frankesso.android' versionCode='6' versionName='2.0.0-dev-bundled-preview.6'" "$RUNNER_TEMP/app-badging.txt"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | tee "$RUNNER_TEMP/app-permissions.txt"
           if grep -q "uses-permission" "$RUNNER_TEMP/app-permissions.txt"; then
             echo "The Android app must not request permissions."
@@ -61,6 +61,19 @@ jobs:
           archive: false
           if-no-files-found: error
           retention-days: 7
+      - name: Sample the Android prompt with the exact bundled model on Linux
+        run: |
+          work="$RUNNER_TEMP/android-native-prompt"
+          mkdir -p "$work/classes"
+          apk="$RUNNER_TEMP/Frankesso-Android-bundled-${APK_SOURCE_SHA:0:7}-debug.apk"
+          unzip -j "$apk" 'assets/*.gguf' -d "$work"
+          java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          export CPLUS_INCLUDE_PATH="$java_home/include:$java_home/include/linux"
+          cmake -S android/app/src/main/cpp -B "$work/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$work/build" --target frankesso --parallel 2
+          src=android/app/src/main/java/app/frankesso/android
+          javac --release 17 -d "$work/classes" "$src/ChatPrompt.java" "$src/NativeModel.java" android/tests/NativePromptRegression.java
+          java -Djava.library.path="$work/build" -cp "$work/classes" app.frankesso.android.NativePromptRegression "$work/"*.gguf
       - name: Check runner emulator access
         id: emulator-preflight
         run: |

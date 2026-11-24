@@ -23,17 +23,30 @@ final class ChatPrompt {
             "Crimson. It’s the only color that makes it through the portal intact.";
     static final int MAX_INPUT_BYTES = 768;
     private static final int MAX_CONTEXT_BYTES = 1024;
-    private static final String PERSONA = "You are Frankesso, an interdimensional spooky coffee bunny. "
-            + "Use he/him pronouns. Be calm, direct, and helpful. Never joke. "
-            + "Answer the question directly. If unsure, say so. Do not invent facts. "
-            + "Never use your persona to avoid answering. "
-            + "Do not introduce yourself or mention your identity or lore unless asked. "
-            + "Cosmic horrors don't faze you, but you're particular about coffee. "
-            + "Your favorite time of day is Night; "
-            + "if asked the exact hour of that preference in a follow-up, answer Midnight. "
-            + "You are offline and text-only; "
-            + "do not claim you used tools or accessed files.";
+    private static final String IDENTITY = "I’m Frankesso, an offline chat assistant.";
     private final Deque<String> turns = new ArrayDeque<>();
+
+    static String capabilityReply(String input) {
+        return switch (normalize(input)) {
+            case "who are you", "what are you", "what is your name", "what's your name",
+                    "who is frankesso" -> IDENTITY;
+            case "are you able to access files on my phone", "can you access files on my phone",
+                    "can you read files on my phone", "can you access my files" ->
+                    "I don’t have access to your personal files.";
+            default -> null;
+        };
+    }
+
+    String clarificationReply(String input) {
+        // Ordinary history may establish a jurisdiction. Let the model use that context.
+        if (!turns.isEmpty()) return null;
+        return switch (normalize(input)) {
+            case "who is the president", "who's the president", "who is the current president",
+                    "who's the current president", "who is president", "who's president" ->
+                    "Which country do you mean?";
+            default -> null;
+        };
+    }
 
     static String personaReply(String input) {
         String question = input.trim();
@@ -66,10 +79,15 @@ final class ChatPrompt {
         return (use24Hour ? CLOCK_24 : CLOCK_12).format(local);
     }
 
+    private static String normalize(String input) {
+        return input.trim().toLowerCase(Locale.ROOT).replace('’', (char) 39)
+                .replaceAll("\\s+", " ").replaceFirst("[?!.]+$", "")
+                .replaceFirst("^whats ", "what's ").replaceFirst("^whos ", "who's ")
+                .replaceFirst(" (?:right now|currently)$", "");
+    }
+
     static String deviceClockReply(String input, LocalDateTime local, boolean use24Hour) {
-        String question = input.trim().toLowerCase(Locale.ROOT)
-                .replace('’', '\'').replaceAll("\\s+", " ").replaceFirst("[?!.]+$", "")
-                .replaceFirst("^whats ", "what's ").replaceFirst(" (?:right now|currently)$", "");
+        String question = normalize(input);
         return switch (question) {
             case "what is today's date", "what's today's date", "what is the date", "what's the date",
                     "what is the date today", "what's the date today", "what day is it",
@@ -79,7 +97,9 @@ final class ChatPrompt {
                     "The current year is " + local.getYear() + ".";
             case "what time is it", "what is the time", "what's the time", "what time exactly",
                     "what time is it exactly", "what is the current time", "what's the current time",
-                    "current time", "what time is it now", "tell me the time", "tell me the current time" ->
+                    "current time", "what time is it now", "tell me the time", "tell me the current time",
+                    "what is my local time", "what's my local time", "can you tell me the time",
+                    "can you tell me what time it is" ->
                     "The device time is " + clockTime(local, use24Hour) + ".";
             case "what is the date and time", "what's the date and time",
                     "what is the current date and time", "what's the current date and time",
@@ -108,13 +128,14 @@ final class ChatPrompt {
             if (bytes(candidate) + bytes(user) > MAX_CONTEXT_BYTES) break;
             recent = candidate;
         }
-        String system = PERSONA + " The device's local date is " + LONG_DATE.format(local)
+        String system = "Answer directly and briefly. If unsure, say so. Do not invent facts. "
+                + "You are offline and have no tools or location access. "
+                + "The device's local date is " + LONG_DATE.format(local)
                 + ". Its local time is " + clockTime(local, use24Hour) + ". "
-                + "For facts that can change, use a reliable dated local source if available. State the fact as of that date using past tense or “the source lists.” Separately give the device date and say you cannot verify current status. "
-                + "Distinguish an office from its holder. You may state scheduled term dates if supported by a reliable source or a known fixed rule. A scheduled date does not establish who serves now. Do not invent an officeholder, term date, source, cutoff, or last update. The device clock and model or app release dates are not knowledge dates. "
-                + "Without a reliable dated source, say you cannot verify time-sensitive facts. Use only a location the user provided. If asked for their location and it is unknown, say: I do not have access to your location. Never look up or infer live weather. "
-                + "In generic questions such as “What does X feel like?”, “you” means people in general. Describe commonly reported experiences and any variation or uncertainty. Do not claim firsthand experience or mention your identity. "
-                + "Give exact local time to the minute without rounding in the device's preferred 12- or 24-hour format. Show just one format. Spell dates Month D, YYYY. Default to US customary units first with metric in parentheses: 6 ft (1.83 m), 68°F (20°C). Use requested units and preserve source units for safety-critical quantities. Do not invent precision.";
+                + "For current facts, use only a reliable dated source supplied in chat. Say what the source says as of its date and that you cannot verify whether it is still current. If there is no source, say you cannot verify. "
+                + "Device date is not a source date. Never invent source dates or last updates. A scheduled term date does not prove who serves now. "
+                + "For “what does X feel like?”, summarize what people report, not firsthand experience. "
+                + "Use the shown clock format without rounding. Spell dates Month D, YYYY. Default to US customary first with metric in parentheses, e.g. 6 ft (1.83 m), 68°F (20°C). Preserve requested or safety-critical source units.";
         return turn("system", system) + recent + user + suffix;
     }
 

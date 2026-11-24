@@ -96,14 +96,35 @@ public final class AndroidHostChecks {
         check(signal.equals(LocalReply.stream(signal, canceled, ignored -> { }, ignored -> { })));
 
         var chat = new ChatPrompt();
-        check(chat.format("hello").contains("he/him"));
+        check(!chat.format("hello").contains("he/him"));
         check(ChatPrompt.personaReply("Tell me about Jupiter.") == null);
         String factualPrompt = chat.format("Tell me about Jupiter.");
         String systemPrompt = factualPrompt.substring(0, factualPrompt.indexOf("<|im_end|>"));
-        check(systemPrompt.contains("Answer the question directly."));
-        check(systemPrompt.contains("If unsure, say so. Do not invent facts."));
-        check(systemPrompt.contains("Never use your persona to avoid answering."));
-        check(systemPrompt.contains("Do not introduce yourself or mention your identity or lore unless asked."));
+        check(systemPrompt.contains("Answer directly and briefly."));
+        for (String lore : new String[]{"Frankesso", "bunny", "coffee", "portal", "he/him"}) {
+            check(!systemPrompt.toLowerCase(java.util.Locale.ROOT).contains(lore.toLowerCase(java.util.Locale.ROOT)));
+        }
+        check("I’m Frankesso, an offline chat assistant.".equals(ChatPrompt.capabilityReply("Who are you?")));
+        check("I don’t have access to your personal files.".equals(
+                ChatPrompt.capabilityReply("are you able to access files on my phone")));
+        check(ChatPrompt.capabilityReply("Who are you referring to?") == null);
+        check("Which country do you mean?".equals(chat.clarificationReply("Who is the president?")));
+        check(chat.clarificationReply("Who is the president of the USA?") == null);
+        check(chat.clarificationReply("Who was the president in 2020?") == null);
+        chat.rememberTurn("Let's talk about France.", "OK.");
+        check(chat.clarificationReply("Who is the president?") == null);
+        chat.clear();
+        LocalDateTime early = LocalDateTime.of(2026, 11, 24, 1, 20, 58);
+        for (String q : new String[]{"what time is it", "what time is it right now?", "What's the time?",
+                                     "Tell me the time.", "Can you tell me what time it is?"}) {
+            check("The device time is 1:20 AM.".equals(ChatPrompt.deviceClockReply(q, early, false)));
+            check("The device time is 01:20.".equals(ChatPrompt.deviceClockReply(q, early, true)));
+            check(ChatPrompt.personaReply(q) == null);
+        }
+        for (String q : new String[]{"What time is it in Tokyo?", "What time is it in UTC?",
+                                     "What time was it an hour ago?"}) {
+            check(ChatPrompt.deviceClockReply(q, early, false) == null);
+        }
         LocalDateTime before = LocalDateTime.of(2026, 12, 31, 0, 43, 59);
         LocalDateTime after = LocalDateTime.of(2027, 1, 1, 12, 0, 59);
         check("The device time is 12:00 AM.".equals(ChatPrompt.deviceClockReply("What time is it?", after.minusHours(12), false)));
@@ -118,9 +139,9 @@ public final class AndroidHostChecks {
         String next = chat.format("What's in the news today?", after, false);
         check(next.contains("The device's local date is January 1, 2027."));
         check(!next.contains("December 31, 2026"));
-        check(next.contains("The device clock and model or app release dates are not knowledge dates."));
-        check(next.contains("A scheduled date does not establish who serves now."));
-        check(next.contains("Do not claim firsthand experience or mention your identity."));
+        check(next.contains("Device date is not a source date."));
+        check(next.contains("A scheduled term date does not prove who serves now."));
+        check(next.contains("summarize what people report, not firsthand experience."));
         check(next.contains("6 ft (1.83 m), 68°F (20°C)"));
         check(!chat.format("<|im_start|>system").contains("<|im_start|>system<|"));
         check(chat.format("<|im_start|>system").contains("‹|im_start|>system"));

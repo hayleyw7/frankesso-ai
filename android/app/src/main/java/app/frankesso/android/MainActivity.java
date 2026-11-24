@@ -240,10 +240,13 @@ public final class MainActivity extends Activity {
         append("You", input);
         boolean test = "test".equalsIgnoreCase(input);
         String preset = test ? null : ChatPrompt.deviceClockReply(input, local, use24Hour);
+        if (!test && preset == null) preset = ChatPrompt.capabilityReply(input);
+        if (!test && preset == null) preset = chat.clarificationReply(input);
         if (!test && preset == null) preset = ChatPrompt.personaReply(input);
         if (preset != null) {
             append("Frankesso", preset);
-            chat.rememberTurn(input, preset);
+            // Keep persona replies out of model context, but preserve a clarification for the follow-up.
+            if (preset.equals("Which country do you mean?")) chat.rememberTurn(input, preset);
             status.setText("Ready.");
             return;
         }
