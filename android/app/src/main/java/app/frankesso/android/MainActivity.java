@@ -10,6 +10,7 @@ import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
+import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -26,7 +27,7 @@ import android.widget.TextView;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
@@ -226,10 +227,11 @@ public final class MainActivity extends Activity {
         if (!ready || busy) return;
         String input = composer.getText().toString().trim();
         if (input.isEmpty()) return;
-        LocalDate today = LocalDate.now();
+        LocalDateTime local = LocalDateTime.now();
+        boolean use24Hour = DateFormat.is24HourFormat(this);
         String prompt;
         try {
-            prompt = chat.format(input, today);
+            prompt = chat.format(input, local, use24Hour);
         } catch (IllegalArgumentException e) {
             status.setText(e.getMessage());
             return;
@@ -237,7 +239,7 @@ public final class MainActivity extends Activity {
         composer.setText("");
         append("You", input);
         boolean test = "test".equalsIgnoreCase(input);
-        String preset = test ? null : ChatPrompt.deviceDateReply(input, today);
+        String preset = test ? null : ChatPrompt.deviceClockReply(input, local, use24Hour);
         if (!test && preset == null) preset = ChatPrompt.personaReply(input);
         if (preset != null) {
             append("Frankesso", preset);

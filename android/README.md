@@ -34,4 +34,6 @@ python3 android/scripts/bundled_model.py verify-apk android/app/build/outputs/ap
 
 ## Included components
 
+The bundled **Qwen2.5-0.5B-Instruct (Q4_K_M)** was [released September 19, 2024](https://qwenlm.github.io/blog/qwen2.5-llm/). Its training-data cutoff is not confirmed.
+
 The APK includes the unmodified [official Qwen2.5 0.5B Instruct Q4_K_M GGUF](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/blob/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf) (491,400,032 bytes), under [Apache-2.0](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/blob/9217f5db79a29953eb74d5343926648285ec7e67/LICENSE). It compiles [llama.cpp](https://github.com/ggml-org/llama.cpp/tree/78a8ae14be559b45f5f13ddee82c188b683d5d8d) into one local native runtime. The license and attribution files ship in the APK under `assets/third-party/`.
